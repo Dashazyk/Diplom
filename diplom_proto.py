@@ -144,7 +144,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 break
             obj_counter[obj_meta.class_id] += 1
 
-            print('getting an img')
+            # print('getting an img')
             # n_frame = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer)) #, frame_meta.batch_id)
             # n_frame = scipy.misc.toimage(n_frame)
             # n_frame = PIL.Image.fromarray(n_frame)
@@ -217,7 +217,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # set(red, green, blue, alpha); set to Black
         py_nvosd_text_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
         # Using pyds.get_string() to get display_text as string
-        print(pyds.get_string(py_nvosd_text_params.display_text))
+        # print(pyds.get_string(py_nvosd_text_params.display_text))
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
         try:
             l_frame=l_frame.next
