@@ -1,0 +1,5 @@
+*.mkv
+videos/
+samples/
+__pycache__/
+back/
