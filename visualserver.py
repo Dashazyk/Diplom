@@ -8,8 +8,9 @@ from flask import Flask, request
 
 from camera_utils import Camera, Vector3, Triag, mult, ray
 
-
 from deepface import DeepFace
+
+
 class Server:
     # all_client_data = {}
     def __init__(self, camera: Camera = Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)) -> None:
@@ -42,6 +43,11 @@ class Server:
         # с целью выяснения, а чьё оно, это лицо,
         # и запомнить соответствие ГлубокоПотоковому ID
         self.faced_ids: dict = {}
+
+        # x = threading.Thread(target=SoundServer, args=('localhost',))
+        # sound_server = SoundServer()
+        # sound_server
+        # x.start()
         
     def upload_data(self):
         api = Flask(__name__)
@@ -156,6 +162,7 @@ class Server:
         return image
 
     def run(self, boxes: list, ids: list = None) -> list:
+        # print('Run')
         ps = self.calc_object_positions(boxes)
 
         new_ids = set(ids) - set(self.faced_ids.keys())
