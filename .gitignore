@@ -1,5 +1,7 @@
+.mkv
 *.mkv
 videos/
 samples/
 __pycache__/
+faces/
 back/

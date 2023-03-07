@@ -57,36 +57,7 @@ pgie_classes_str = [
 
 serv = visualserver.Server()
 
-def draw_bounding_boxes(image, obj_meta, confidence):
-    confidence = '{0:.2f}'.format(confidence)
-    rect_params = obj_meta.rect_params
-    top = int(rect_params.top)
-    left = int(rect_params.left)
-    width = int(rect_params.width)
-    height = int(rect_params.height)
-    obj_name = pgie_classes_str[obj_meta.class_id]
-    # image = cv2.rectangle(image, (left, top), (left + width, top + height), (0, 0, 255, 0), 2, cv2.LINE_4)
-    color = (0, 0, 255, 0)
-    w_percents = int(width * 0.05) if width > 100 else int(width * 0.1)
-    h_percents = int(height * 0.05) if height > 100 else int(height * 0.1)
-    linetop_c1 = (left + w_percents, top)
-    linetop_c2 = (left + width - w_percents, top)
-    image = cv2.line(image, linetop_c1, linetop_c2, color, 6)
-    linebot_c1 = (left + w_percents, top + height)
-    linebot_c2 = (left + width - w_percents, top + height)
-    image = cv2.line(image, linebot_c1, linebot_c2, color, 6)
-    lineleft_c1 = (left, top + h_percents)
-    lineleft_c2 = (left, top + height - h_percents)
-    image = cv2.line(image, lineleft_c1, lineleft_c2, color, 6)
-    lineright_c1 = (left + width, top + h_percents)
-    lineright_c2 = (left + width, top + height - h_percents)
-    image = cv2.line(image, lineright_c1, lineright_c2, color, 6)
-    # Note that on some systems cv2.putText erroneously draws horizontal lines across the image
-    image = cv2.putText(image, obj_name + ',C=' + str(confidence), (left - 10, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                        (0, 0, 255, 0), 2)
-    return image
 
-import PIL
 def osd_sink_pad_buffer_probe(pad,info,u_data):
     boxes = []
     ids = []
@@ -130,7 +101,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # we need to extract faces from our image
         # code bnelow should save the image
 
-        folder_name = '/home/dasha/Pictures/diplomya'
+        folder_name = '/tmp/diplomya/'
 
         # end of saving
 
@@ -143,12 +114,6 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             except StopIteration:
                 break
             obj_counter[obj_meta.class_id] += 1
-
-            # print('getting an img')
-            # n_frame = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer)) #, frame_meta.batch_id)
-            # n_frame = scipy.misc.toimage(n_frame)
-            # n_frame = PIL.Image.fromarray(n_frame)
-            # n_frame = draw_bounding_boxes(n_frame, obj_meta, obj_meta.confidence)
 
             if obj_meta.class_id == PGIE_CLASS_ID_PERSON:
                 obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.0)
@@ -166,28 +131,32 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 boxes.append(visualserver.Vector3(b_x, b_y, 0))
                 ids.append(id)
 
+                if frame_number > 16: #n_frame != None:
+                    id = obj_meta.object_id
+
+                    if id not in serv.faced_ids:
+                        n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
+                        frame_copy = np.array(n_frame, copy=True, order='C')
+                        frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
+                            # last_track_id = track_id
+                            # save_image = True
+                        # print('Photo')
+                        # img_path = "{}/frame_{}.{}.jpg".format(folder_name, frame_number, track_id)
+                        Y = int(box['top'])
+                        H = int(box['height'])
+                        X = int(box['left'])
+                        W = int(box['width'])
+                        frame_copy = frame_copy[Y:Y+H,X:X+W]
+                        img_path = "{}/face_{}.jpg".format(folder_name, id)
+                        cv2.imwrite(img_path, frame_copy)
+                        print(f'Saved an img #{frame_number} of id {id}')
+                        # serv.faced_ids[track_id] = None
             else:
                 obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
             try: 
                 l_obj=l_obj.next
             except StopIteration:
                 break
-
-        
-        # n_frame = draw_bounding_boxes(n_frame, obj_meta, obj_meta.confidence)
-        # convert python array into numpy array format in the copy mode.
-        if False: #n_frame != None:
-            print('Saving an img')
-            frame_copy = np.array(n_frame, copy=True, order='C')
-            print(np.shape(n_frame))
-            # convert the array into cv2 default color format
-            # frame_copy = scipy.misc.toimage(frame_copy)
-            frame_copy = PIL.Image.fromarray((frame_copy * 255).astype(np.uint8))
-            # frame_copy = PIL.Image.fromarray(frame_copy)
-            frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
-            img_path = "{}/frame_{}.jpg".format(folder_name, frame_number)
-            cv2.imwrite(img_path, frame_copy)
-            print(f'Saved an img #{frame_number}')
 
         # Acquiring a display meta object. The memory ownership remains in
         # the C code so downstream plugins can still access it. Otherwise
@@ -228,7 +197,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
     #camr = cam.Camera(8.0, -3.0, 0.0, 2.0, 1.0, 2.0, 6.0, 1.0, 0.0, 0.0)
     #view = cam.Camera(1.0, 0.0, 0.0, 0.5, 0.1, 1.0, 4.0, 1.0, 0.0, 0.0)
     #ps = cam.place_objects(floor, boxes, camr, view)
-
+    serv.add_new_faces(ids, folder_name)
     serv.run(boxes, ids)
     #print(ps)
 
@@ -365,7 +334,7 @@ def main(args):
     if src_type == 'cam':
         print("Playing cam %s " %src_path)
         caps_v4l2src.set_property('caps', Gst.Caps.from_string("video/x-raw, framerate=30/1"))
-        caps_vidconvsrc.set_property('caps', Gst.Caps.from_string("video/x-raw(memory:NVMM)"))
+        caps_vidconvsrc.set_property('caps', Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA"))
         source.set_property('device', src_path)
         streammux.set_property('width', 1280)
         streammux.set_property('height', 960)

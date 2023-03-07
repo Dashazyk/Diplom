@@ -161,23 +161,48 @@ class Server:
 
         return image
 
-    def run(self, boxes: list, ids: list = None) -> list:
-        # print('Run')
-        ps = self.calc_object_positions(boxes)
-
+    def add_new_faces(self, ids, faces_path, db_path = '/home/dasha/Pictures/Faces'):
         new_ids = set(ids) - set(self.faced_ids.keys())
         if new_ids:
             pass
             # идов пришло больше чем знаем
             # print(new_ids)
-            # for id in new_ids:
-            #     self.faced_ids[id] = DeepFace.find(
-            #         # TODO
-            #         img_path='TODO:',
-            #         db_path = '/home/dasha/Pictures/Faces',
-            #         model_name = 'SFace',
-            #         detector_backend = 'dlib'
-            #     )
+            for id in new_ids:
+                # print(id)
+                # self.faced_ids[id] = None
+                try:
+                    self.faced_ids[id] = DeepFace.find(
+                        # TODO
+                        img_path=f'{faces_path}/face_{id}.jpg',
+                        db_path = '/home/dasha/Pictures/face_db/',
+                        model_name = 'SFace',
+                        detector_backend = 'dlib'
+                    )
+                    self.faced_ids[id] = (self.faced_ids[id])[0]['identity'].iloc[0].split('/')[-2]
+                    print('/================\\')
+                    print(self.faced_ids[id])
+                    print('\\================/')
+                except Exception as e:
+                    print(e)
+
+    def run(self, boxes: list, ids: list = None) -> list:
+        # print('Run')
+        ps = self.calc_object_positions(boxes)
+
+        # new_ids = set(ids) - set(self.faced_ids.keys())
+        # if new_ids:
+        #     pass
+        #     # идов пришло больше чем знаем
+        #     # print(new_ids)
+        #     for id in new_ids:
+        #         self.faced_ids[id] = None
+        #     #     self.faced_ids[id] = DeepFace.find(
+        #     #         # TODO
+        #     #         img_path='TODO:',
+        #     #         db_path = '/home/dasha/Pictures/Faces',
+        #     #         model_name = 'SFace',
+        #     #         detector_backend = 'dlib'
+        #     #     )
 
         pd = []
         # print('stored ids:', self.faced_ids)
@@ -186,7 +211,10 @@ class Server:
             if p:
                 j_dict = p.dict().copy()
                 if ids:
-                    j_dict['id'] = ids[pidx]
+                    id = ids[pidx]
+                    j_dict['id'] = id
+                    if id in self.faced_ids:
+                        j_dict['face'] = self.faced_ids[id]
                 pd.append(j_dict)
 
         # self.all_obj_data = json.dumps(pd, indent = 4)
