@@ -72,7 +72,7 @@ class Server:
 
             return json.dumps(self.observer)
 
-        api.run()
+        api.run(host='0.0.0.0')
 
     def calc_object_positions(self, boxes):
         z: float = 1.0 / math.tan(self.camera.fov * math.pi / 360.0);

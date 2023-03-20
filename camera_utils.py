@@ -6,6 +6,13 @@ class Vector3:
         self.y = y
         self.z = z
 
+    def clone(self):
+        return Vector3(
+            self.x,
+            self.y,
+            self.z
+        )
+
     @classmethod
     def from_tuple(cls, _tuple):
         return cls(

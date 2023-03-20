@@ -58,7 +58,7 @@ class Tester:
         people = self.people
         # screen = self.screen
         scale  = self.scale
-        l_pos  = self.local_position
+        l_pos  = self.local_position.copy()
 
         w, h  = self.screen.get_size()
         # screen = pygame
