@@ -6,6 +6,14 @@ class Vector3:
         self.y = y
         self.z = z
 
+    @classmethod
+    def from_tuple(cls, _tuple):
+        return cls(
+            _tuple[0] if len(_tuple) > 0 else 0,
+            _tuple[1] if len(_tuple) > 1 else 0,
+            _tuple[2] if len(_tuple) > 2 else 0
+        )
+
     def dict(self):
         return {
             'x': round(self.x, 5),
