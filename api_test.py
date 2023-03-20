@@ -180,11 +180,16 @@ class Tester:
                         (event.w, event.h),
                         pygame.RESIZABLE
                     )
+                
+                if event.type == pygame.MOUSEWHEEL:
+                    print(event.x, event.y)
+                    self.scale += event.py
 
             # limit to 288 fps (hopefully)
             if (new_time - prev_time) * 1000 >= 1000 / 288:
                 draw_thread = threading.Thread(target = self.draw_people)
                 draw_thread.start()
+                pygame.display.update()
             # self.draw_people()
             # Fill the background with white
             # self.screen.fill((255, 255, 255))
@@ -194,7 +199,7 @@ class Tester:
 
             # Flip the display
             # pygame.display.flip()
-            pygame.display.update()
+                
 
 
         # Done! Time to quit.
