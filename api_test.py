@@ -27,8 +27,8 @@ class Tester:
     def __init__(self, url) -> None:
         self.url = url
         self.running = False
-        self.people = {}
-        self.screen = None
+        self.people  = {}
+        self.screen  = None
         self.local_position = Vector3(0, 0, 0)
         self.scale = 30
 
@@ -93,7 +93,7 @@ class Tester:
             if int(person["id"]) == -1:
                 person_color = (0, 0, 127)
             ppos = ppos.scale(scale)
-            ppos = ppos.add(l_pos)
+            ppos = ppos.add  (l_pos)
             pygame.draw.circle(
                 screen, 
                 person_color,
@@ -119,7 +119,9 @@ class Tester:
         api_thread.start()
         prev_mpos: Vector3 = Vector3(0, 0, 0)
         mouse_tracking: bool = False
+        prev_time = time.time() * 1000
         while self.running:
+            new_time = time.time() * 1000
             current_mpos = None
             # try:
                 
@@ -179,8 +181,10 @@ class Tester:
                         pygame.RESIZABLE
                     )
 
-            draw_thread = threading.Thread(target = self.draw_people)
-            draw_thread.start()
+            # limit to 288 fps (hopefully)
+            if (new_time - prev_time) * 1000 >= 1000 / 288:
+                draw_thread = threading.Thread(target = self.draw_people)
+                draw_thread.start()
             # self.draw_people()
             # Fill the background with white
             # self.screen.fill((255, 255, 255))
