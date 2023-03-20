@@ -158,8 +158,6 @@ class Tester:
                         self.scale += 5
                     elif event.key == K_MINUS:
                         self.scale -= 5
-                        if self.scale < 5:
-                            self.scale = 5
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_tracking = True
                 elif event.type == pygame.MOUSEBUTTONUP:
@@ -183,7 +181,10 @@ class Tester:
                 
                 if event.type == pygame.MOUSEWHEEL:
                     print(event.x, event.y)
-                    self.scale += event.py
+                    self.scale += event.y
+
+                if self.scale < 5:
+                    self.scale = 5
 
             # limit to 288 fps (hopefully)
             if (new_time - prev_time) * 1000 >= 1000 / 288:
