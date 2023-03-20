@@ -6,7 +6,7 @@ class Vector3:
         self.y = y
         self.z = z
 
-    def clone(self):
+    def copy(self):
         return Vector3(
             self.x,
             self.y,
