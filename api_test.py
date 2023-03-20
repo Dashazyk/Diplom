@@ -1,6 +1,4 @@
-# Simple pygame program
-
-# Import and initialize the pygame library
+import sys
 import pygame
 import requests
 import threading
@@ -200,5 +198,8 @@ class Tester:
 
 
 if __name__ == '__main__':
-    tester = Tester('http://localhost:5000/')
+    url = 'http://localhost:5000/'
+    if len(sys.argv) > 1:
+        url = sys.argv[1]
+    tester = Tester(url)
     tester.main()
