@@ -31,6 +31,7 @@ class Tester:
         self.screen  = None
         self.local_position = Vector3(0, 0, 0)
         self.scale = 30
+        self.finished_drawing: bool = True
 
     def change_observer_position(self, dx, dy):
         url = self.url + '/observer'
@@ -55,54 +56,59 @@ class Tester:
 
 
     def draw_people(self):
-        people = self.people
-        # screen = self.screen
-        scale  = self.scale
-        l_pos  = self.local_position.copy()
+        try:
+            self.finished_drawing = False
+            people = self.people
+            # screen = self.screen
+            scale  = self.scale
+            l_pos  = self.local_position.copy()
 
-        w, h  = self.screen.get_size()
-        # screen = pygame
+            w, h  = self.screen.get_size()
+            # screen = pygame
 
-        screen = pygame.Surface((w, h))
-        screen.fill((0, 0, 0))
+            screen = pygame.Surface((w, h))
+            screen.fill((0, 0, 0))
 
-        dw = l_pos.x % scale
-        dh = l_pos.y % scale
-        for x in range(dw, w+dw, scale):
-            pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, h))
-        for y in range(dh, h+dh, scale):
-            pygame.draw.line(screen, (50, 50, 50), (0, y), (w, y))
+            dw = l_pos.x % scale
+            dh = l_pos.y % scale
+            for x in range(dw, w+dw, scale):
+                pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, h))
+            for y in range(dh, h+dh, scale):
+                pygame.draw.line(screen, (50, 50, 50), (0, y), (w, y))
 
-        # pygame.draw.circle(
-        #     screen, 
-        #     (255, 0, 0),
-        #     [l_pos.x, l_pos.y], 
-        #     int(scale * 1.75), 
-        #     0
-        # )
-        pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(0, l_pos.y-2, w, 4))
-        pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(l_pos.x-2, 0, 4, h))
+            # pygame.draw.circle(
+            #     screen, 
+            #     (255, 0, 0),
+            #     [l_pos.x, l_pos.y], 
+            #     int(scale * 1.75), 
+            #     0
+            # )
+            pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(0, l_pos.y-2, w, 4))
+            pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(l_pos.x-2, 0, 4, h))
 
-        for person in people:
-            ppos = Vector3(
-                person['x'],
-                person['y'],
-                0
-            )
-            person_color = (127, 127, 127)
-            if int(person["id"]) == -1:
-                person_color = (0, 0, 127)
-            ppos = ppos.scale(scale)
-            ppos = ppos.add  (l_pos)
-            pygame.draw.circle(
-                screen, 
-                person_color,
-                [int(ppos.x), int(ppos.y)], 
-                int(scale * 0.5), 
-                0
-            )
-        screen = pygame.transform.flip(screen, False, True)
-        self.screen.blit(screen, (0, 0))
+            for person in people:
+                ppos = Vector3(
+                    person['x'],
+                    person['y'],
+                    0
+                )
+                person_color = (127, 127, 127)
+                if int(person["id"]) == -1:
+                    person_color = (0, 0, 127)
+                ppos = ppos.scale(scale)
+                ppos = ppos.add  (l_pos)
+                pygame.draw.circle(
+                    screen, 
+                    person_color,
+                    [int(ppos.x), int(ppos.y)], 
+                    int(scale * 0.5), 
+                    0
+                )
+            screen = pygame.transform.flip(screen, False, True)
+            self.screen.blit(screen, (0, 0))
+        except:
+            pass
+        self.finished_drawing = True
 
 
     def main(self):
@@ -120,6 +126,7 @@ class Tester:
         prev_mpos: Vector3 = Vector3(0, 0, 0)
         mouse_tracking: bool = False
         prev_time = time.time() * 1000
+        
         while self.running:
             new_time = time.time() * 1000
             current_mpos = None
@@ -186,8 +193,8 @@ class Tester:
                 if self.scale < 5:
                     self.scale = 5
 
-            # limit to 288 fps (hopefully)
-            if (new_time - prev_time) * 1000 >= 1000 / 288:
+            # limit to 720 fps (hopefully)
+            if (new_time - prev_time) >= 1000 / 720 and self.finished_drawing:
                 draw_thread = threading.Thread(target = self.draw_people)
                 draw_thread.start()
                 pygame.display.update()
