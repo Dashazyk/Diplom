@@ -243,7 +243,7 @@ class Tester:
         mouse_tracking: bool = False
         prev_time = time.time() * 1000
 
-        cw, ch  = canvas.get_size()
+        # cw, ch  = canvas.get_size()
         
         while self.running:
             new_time = time.time() * 1000
@@ -268,14 +268,14 @@ class Tester:
                     elif event.key == K_a:
                         self.change_observer_position(-1,  0)
 
-                    if event.key == K_UP:
-                        self.local_position = self.local_position.add(Vector3(0, 3, 0))
-                    elif event.key == K_DOWN:
-                        self.local_position = self.local_position.add(Vector3(0, -3, 0))
-                    elif event.key == K_LEFT:
-                        self.local_position = self.local_position.add(Vector3(-3, 0, 0))
-                    elif event.key == K_RIGHT:
-                        self.local_position = self.local_position.add(Vector3(3, 0, 0))
+                    # if event.key == K_UP:
+                    #     self.local_position = self.local_position.add(Vector3(0, 3, 0))
+                    # elif event.key == K_DOWN:
+                    #     self.local_position = self.local_position.add(Vector3(0, -3, 0))
+                    # elif event.key == K_LEFT:
+                    #     self.local_position = self.local_position.add(Vector3(-3, 0, 0))
+                    # elif event.key == K_RIGHT:
+                    #     self.local_position = self.local_position.add(Vector3(3, 0, 0))
 
                     if event.key in [K_EQUALS, K_PLUS]:
                         self.scale += 5
@@ -291,15 +291,17 @@ class Tester:
                 elif event.type == pygame.MOUSEBUTTONUP:
                     mouse_tracking = False
                 elif event.type == pygame.MOUSEMOTION:
-                    raw_mpos = pygame.mouse.get_pos()
-                    if raw_mpos and len(raw_mpos) == 2:
-                        current_mpos: Vector3 = Vector3.from_tuple(raw_mpos)
-                        if mouse_tracking:
+                    if mouse_tracking:
+                        raw_mpos = pygame.mouse.get_pos()
+                        if raw_mpos and len(raw_mpos) == 2:
+                            current_mpos: Vector3 = Vector3.from_tuple(raw_mpos)
+                        
                             mouse_diff: Vector3 = current_mpos.diff(prev_mpos)
                             mouse_diff.y = -mouse_diff.y
                             self.local_position = self.local_position.add(mouse_diff)
                         prev_mpos = current_mpos
                 elif event.type == pygame.VIDEORESIZE:
+                    cw, ch  = canvas.get_size()
                     self.local_position.y += event.size[1] - ch
                     canvas = pygame.Surface(event.size)
                 
@@ -309,14 +311,14 @@ class Tester:
             # limit to 720 fps (hopefully)
             if (new_time - prev_time) >= 1000 / 720 and self.finished_drawing:
                     # let's apply the results of previous render
-                    rw, rh = real_screen.get_size()
-                    if rw == cw and rh == ch:
-                        canvas = pygame.transform.flip(canvas, False, True)
-                        real_screen.blit(canvas, (0, 0))
-                        pygame.display.update()
+                    # rw, rh = real_screen.get_size()
+                    # if rw == cw and rh == ch:
+                    canvas = pygame.transform.flip(canvas, False, True)
+                    real_screen.blit(canvas, (0, 0))
+                    pygame.display.update()
 
                     # canvas = pygame.Surface(real_screen.get_size())
-                    cw, ch  = canvas.get_size()
+                    # cw, ch  = canvas.get_size()
                     draw_thread = threading.Thread(target = self.draw_screen, args = (canvas,))
                     draw_thread.start()
 
@@ -332,7 +334,7 @@ class Tester:
             # pygame.display.flip()
         # self.micro_recorder.running = False
         # signal.signal(signal.SIGINT, self.signal_handler)
-        micro_process.kill()
+        micro_process.terminate()
 
 
         # Done! Time to quit.

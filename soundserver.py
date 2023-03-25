@@ -89,7 +89,10 @@ class SoundServer:
                 with conn:
                     print(f"Connected by {addr}")
                     while self.running:
-                        data = conn.recv(self.chunk_size)
+                        try:
+                            data = conn.recv(self.chunk_size)
+                        except:
+                            print('hmm has the client died or something?')
                         if not data:
                             break
                         # conn.sendall(data)
