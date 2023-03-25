@@ -256,6 +256,8 @@ class Tester:
             timeout = 0
 
             for event in pygame.event.get():
+                print("What is this event? ", event)
+
                 if event.type == QUIT:
                     self.running = False
                 elif event.type == KEYDOWN:
@@ -309,7 +311,7 @@ class Tester:
                     canvas = pygame.Surface((event.w, event.h))
                 
                 if event.type == pygame.MOUSEWHEEL:
-                    print(event.x, event.y)
+                    # print(event.x, event.y)
                     self.scale += event.y
 
                 if self.scale < 15:
