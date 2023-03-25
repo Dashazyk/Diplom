@@ -247,22 +247,10 @@ class Tester:
         prev_time = time.time() * 1000
 
         cw, ch  = canvas.get_size()
-        next_size = None
-        resize_timeout = 0
         
         while self.running:
             new_time = time.time() * 1000
             current_mpos = None
-
-            #or event.type == pygame.MOUSEMOTION
-            if (resize_timeout <= 0) and next_size:
-                print(resize_timeout, next_size)
-                # real_screen = pygame.display.set_mode(
-                #     next_size,
-                #     pygame.RESIZABLE
-                # )
-                canvas = pygame.Surface(next_size)
-                next_size = None
 
             for event in pygame.event.get():
 
@@ -306,14 +294,6 @@ class Tester:
                 elif event.type == pygame.MOUSEBUTTONUP:
                     mouse_tracking = False
                 elif event.type == pygame.MOUSEMOTION:
-                    # if next_size:
-                    #     real_screen = pygame.display.set_mode(
-                    #         next_size,
-                    #         pygame.RESIZABLE
-                    #     )
-                    #     canvas = pygame.Surface(next_size)
-                    #     next_size = None
-
                     raw_mpos = pygame.mouse.get_pos()
                     if raw_mpos and len(raw_mpos) == 2:
                         current_mpos: Vector3 = Vector3.from_tuple(raw_mpos)
@@ -323,19 +303,15 @@ class Tester:
                             self.local_position = self.local_position.add(mouse_diff)
                         prev_mpos = current_mpos
                 elif event.type == pygame.VIDEORESIZE:
-                    next_size = event.size
-                    resize_timeout = 100
+                    canvas = pygame.Surface(event.size)
                 
                 if self.scale < 15:
                     self.scale = 15
 
             # limit to 720 fps (hopefully)
             if (new_time - prev_time) >= 1000 / 720 and self.finished_drawing:
-                    if resize_timeout > 0:
-                        resize_timeout -= 1
-
                     # let's apply the results of previous render
-                    rw, rh  = real_screen.get_size()
+                    rw, rh = real_screen.get_size()
                     if rw == cw and rh == ch:
                         canvas = pygame.transform.flip(canvas, False, True)
                         real_screen.blit(canvas, (0, 0))
