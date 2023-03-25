@@ -288,6 +288,11 @@ class Tester:
                         self.scale -= 5
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_tracking = True
+
+                    if event.button == 5:
+                        self.scale -= 5
+                    elif event.button == 4:
+                        self.scale += 5
                 elif event.type == pygame.MOUSEBUTTONUP:
                     mouse_tracking = False
                 elif event.type == pygame.MOUSEMOTION:
@@ -310,9 +315,9 @@ class Tester:
                     )
                     canvas = pygame.Surface((event.w, event.h))
                 
-                if event.type == pygame.MOUSEWHEEL:
-                    # print(event.x, event.y)
-                    self.scale += event.y
+                # if event.type == pygame.MOUSEWHEEL:
+                #     # print(event.x, event.y)
+                #     self.scale += event.y
 
                 if self.scale < 15:
                     self.scale = 15
