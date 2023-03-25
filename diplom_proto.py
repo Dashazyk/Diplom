@@ -39,6 +39,8 @@ import cv2
 from common.is_aarch_64 import is_aarch64
 from common.bus_call import bus_call
 from common.FPS import PERF_DATA
+from multiprocessing import Process
+from soundserver import SoundServer
 
 # import scipy.misc
 # rgb = scipy.misc.toimage(np_array)
@@ -55,8 +57,11 @@ pgie_classes_str = [
     "roadsignichle"
 ]
 
-serv = visualserver.Server()
+serv  = visualserver.Server()
+sound = SoundServer()
 
+sound_process = Process(target=sound.run)
+sound_process.start()
 
 def osd_sink_pad_buffer_probe(pad,info,u_data):
     boxes = []
@@ -458,6 +463,8 @@ def main(args):
         pass
     # cleanup
     pipeline.set_state(Gst.State.NULL)
+
+    sound_process.terminate()
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

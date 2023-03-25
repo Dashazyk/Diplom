@@ -20,6 +20,12 @@ class Vector3:
             _tuple[1] if len(_tuple) > 1 else 0,
             _tuple[2] if len(_tuple) > 2 else 0
         )
+    
+    @classmethod
+    def from_json(cls, jtxt):
+        return cls(
+            jtxt['x'], jtxt['y'], jtxt['y']
+        )
 
     def dict(self):
         return {
@@ -73,6 +79,14 @@ class Vector3:
     def scale(self, m: float):
         return Vector3(self.x * m, self.y * m, self.z * m)
 
+    def dict(self):
+        return {
+            'x': self.x,
+            'y': self.y,
+            'z': self.z
+        }
+
+
 class SphericCoords():
     def __init__(self, r, z, phi):
         self.radius  = r
@@ -125,6 +139,11 @@ class Camera:
             self.h_rotation,
             self.v_rotation
         )
+    
+    def dict(self):
+        r = self.__dict__.copy()
+        r['position'] = r['position'].dict()
+        return r
 
 # def raytrace_pixel(triags, y, x, cam_pos: Camera, bx, by, bz):
 #     tx = -1.0 + dw * x

@@ -5,6 +5,10 @@ import threading
 import time
 import json
 from camera_utils import Vector3
+from micro_recorder import MicroRecorder
+from multiprocessing import Process
+import signal
+import math as m
 
 from pygame.locals import (
     K_UP,
@@ -25,13 +29,16 @@ from pygame.locals import (
 
 class Tester:
     def __init__(self, url) -> None:
+        self.font = None
+        self.camera = None
         self.url = url
         self.running = False
         self.people  = {}
-        self.screen  = None
+        # self.screen  = None
         self.local_position = Vector3(0, 0, 0)
         self.scale = 30
         self.finished_drawing: bool = True
+        self.micro_recorder = MicroRecorder(url.split(':')[1].lstrip('/'), 50002)
 
     def change_observer_position(self, dx, dy):
         url = self.url + '/observer'
@@ -42,90 +49,201 @@ class Tester:
         requests.post(url, json=data)
 
     def get_people(self, timeout = 100):
-        old_time = 0
+        cold_time = 0
+        pold_time = 0
         new_time = 0
+        urlp = self.url + '/people'
+        urlc = self.url + '/camera'
+
         while self.running:
             new_time = time.time()
-            if (new_time - old_time)*1000 > timeout:
-                url = self.url + '/people'
-                response = requests.get(url)
-                # print(people)
-                self.people = json.loads(response.text)
-                old_time = new_time
-            # sleep(1)
+            if (new_time - pold_time)*1000 > timeout:
+                try:
+                    response = requests.get(urlp)
+                    # print(people)
+                    self.people = json.loads(response.text)
+                    pold_time = new_time
+                except Exception as e:
+                    print(e)
 
+            if (new_time - cold_time)*1000 > timeout*10:
+                # print('hmm')
+                try:
+                    response = requests.get(urlc)
+                    # print(response.text)
+                    # print(people)
+                    self.camera = json.loads(response.text)
+                    cold_time = new_time
+                except Exception as e:
+                    print(e)
 
-    def draw_people(self):
-        try:
-            self.finished_drawing = False
-            people = self.people
-            # screen = self.screen
-            scale  = self.scale
-            l_pos  = self.local_position.copy()
+    def draw_background(self, screen):
+        w, h = screen.get_size()
+        scale  = self.scale
+        l_pos  = self.local_position.copy()
+        dw = l_pos.x % scale
+        dh = l_pos.y % scale
+        for x in range(dw, w+dw, scale):
+            pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, h))
+        for y in range(dh, h+dh, scale):
+            pygame.draw.line(screen, (50, 50, 50), (0, y), (w, y))
 
-            w, h  = self.screen.get_size()
-            # screen = pygame
+        # pygame.draw.circle(
+        #     screen, 
+        #     (255, 0, 0),
+        #     [l_pos.x, l_pos.y], 
+        #     int(scale * 1.75), 
+        #     0
+        # )
+        pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(0, l_pos.y-2, w, 4))
+        pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(l_pos.x-2, 0, 4, h))
 
-            screen = pygame.Surface((w, h))
-            screen.fill((0, 0, 0))
+    def draw_people(self, screen):
+        people = self.people
+        scale  = self.scale
+        l_pos  = self.local_position.copy()
+        sw, sh = screen.get_size()
+        for person in people:
+            ppos = Vector3(
+                person['x'],
+                person['y'],
+                0
+            )
+            person_color = (127, 127, 127)
+            if int(person["id"]) == -1:
+                person_color = (0, 0, 127)
+            ppos = ppos.scale(scale)
+            ppos = ppos.add  (l_pos)
+            pygame.draw.circle(
+                screen, 
+                person_color,
+                [int(ppos.x), int(ppos.y)], 
+                int(scale * 0.5), 
+                0
+            )
 
-            dw = l_pos.x % scale
-            dh = l_pos.y % scale
-            for x in range(dw, w+dw, scale):
-                pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, h))
-            for y in range(dh, h+dh, scale):
-                pygame.draw.line(screen, (50, 50, 50), (0, y), (w, y))
+            # print(person)
+            if 'id' in person:
+                img = self.font.render(f'{person["id"]}', True, (255, 70, 255))
+                img = pygame.transform.flip(img, False, True)
+                iw, ih = img.get_size()
+                # ppos = ppos.add  (Vector3(0, -scale, 0))
+                ppos = ppos.add  (Vector3(0, -ih / 2, 0))
+                screen.blit(img, [int(ppos.x -iw / 2), int(ppos.y)])
+                # screen.blit(img, (50, 50))
+            # else:
+                
 
-            # pygame.draw.circle(
+    def draw_camera(self, screen):
+        w, h = screen.get_size()
+        scale  = self.scale
+        l_pos  = self.local_position.copy()
+        if self.camera:
+            cpos = Vector3.from_json(self.camera['position'])
+            cpos.z = 0
+            cpos = cpos.scale(scale)
+            cpos = cpos.add  (l_pos)
+            hangle = float(self.camera['h_rotation'])
+            dir_vector = Vector3(
+                scale * m.sin(hangle),
+                scale * m.cos(hangle),
+                0
+            )
+            dir_end = cpos.add(dir_vector)
+            # cpos = cpos.add  (Vector3(scale/2, scale/2, 0))
+            # pygame.draw.rect(
             #     screen, 
-            #     (255, 0, 0),
-            #     [l_pos.x, l_pos.y], 
-            #     int(scale * 1.75), 
-            #     0
+            #     ((50, 127, 50)), 
+            #     pygame.Rect(int(cpos.x), int(cpos.y), scale, scale)
             # )
-            pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(0, l_pos.y-2, w, 4))
-            pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(l_pos.x-2, 0, 4, h))
+            pygame.draw.line(screen, 
+                ((50, 127, 50)), 
+                [int(cpos.x),    int(cpos.y)   ], 
+                [int(dir_end.x), int(dir_end.y)]
+            )
+            pygame.draw.circle(
+                screen, 
+                ((0, 0, 0)),
+                [int(cpos.x), int(cpos.y)], 
+                int(scale * 0.3), 
+                0
+            )
+            pygame.draw.circle(
+                screen, 
+                ((50, 127, 50)),
+                [int(cpos.x), int(cpos.y)], 
+                int(scale * 0.3), 
+                3
+            )
 
-            for person in people:
-                ppos = Vector3(
-                    person['x'],
-                    person['y'],
-                    0
-                )
-                person_color = (127, 127, 127)
-                if int(person["id"]) == -1:
-                    person_color = (0, 0, 127)
-                ppos = ppos.scale(scale)
-                ppos = ppos.add  (l_pos)
-                pygame.draw.circle(
-                    screen, 
-                    person_color,
-                    [int(ppos.x), int(ppos.y)], 
-                    int(scale * 0.5), 
-                    0
-                )
-            screen = pygame.transform.flip(screen, False, True)
-            self.screen.blit(screen, (0, 0))
-        except:
-            pass
+    def draw_mousepos(self, screen):
+        sw, sh = screen.get_size()
+        cx, cy = pygame.mouse.get_pos()
+        l_pos  = self.local_position.copy()
+        scale  = self.scale
+        # pygame.draw.circle(
+        #     screen, 
+        #     ((100, 0, 0)),
+        #     [int(x), int(h - y)], 
+        #     int(self.scale * 1), 
+        #     0
+        # )
+        rx = cx - l_pos.x
+        ry = sh - cy - l_pos.y
+        rx /= scale
+        ry /= scale
+        rx = round(rx, 1)
+        ry = round(ry, 1)
+        img = self.font.render(f'{rx}, {ry}', True, (25, 255, 255))
+        img = pygame.transform.flip(img, False, True)
+        iw, ih = img.get_size()
+        screen.blit(img, (int(cx - iw/2), int(sh - cy)))
+
+    def draw_screen(self, screen):
+        self.finished_drawing = False
+        screen.fill((0, 0, 0))
+        self.draw_background(screen)
+        self.draw_people    (screen)
+        self.draw_camera    (screen)
+        self.draw_mousepos  (screen)
+
+        # print(x, y)
+
+        # screen = 
         self.finished_drawing = True
-
 
     def main(self):
         # url = 'http://localhost:5000/'
+        micro_process = Process(target=self.micro_recorder.record_sound)
+        micro_process.start()
+
+        # Microphone-recording code needs to be above or pygame will capture the micro and nothing will work
         pygame.init()
+        self.font = pygame.font.SysFont('monospace', 16)
+
         # Set up the drawing window
-        self.screen = pygame.display.set_mode([700, 700], pygame.RESIZABLE)
-        self.local_position = Vector3(700//2, 700//2, 0)
+        def_w = 800
+        def_h = 800
+        real_screen = pygame.display.set_mode([def_w, def_h], pygame.RESIZABLE)
+        canvas      = pygame.Surface((def_w, def_h))
+        
+        self.local_position = Vector3(def_w//2, def_h//2, 0)
 
         # Run until the user asks to quit
         self.running = True
 
         api_thread = threading.Thread(target = self.get_people)
         api_thread.start()
+        # micro_thread = threading.Thread(target = self.micro_recorder.record_sound)
+        # micro_thread.start()
+        # micro_process = Process(target=self.micro_recorder.record_sound)
+        # micro_process.start()
+
         prev_mpos: Vector3 = Vector3(0, 0, 0)
         mouse_tracking: bool = False
         prev_time = time.time() * 1000
+
+        cw, ch  = canvas.get_size()
         
         while self.running:
             new_time = time.time() * 1000
@@ -135,6 +253,7 @@ class Tester:
             #     print(current_mpos)
             # except: 
             #     pass
+            timeout = 0
 
             for event in pygame.event.get():
                 if event.type == QUIT:
@@ -181,23 +300,35 @@ class Tester:
                         prev_mpos = current_mpos
                 elif event.type == pygame.VIDEORESIZE:
                     # There's some code to add back window content here.
-                    self.screen = pygame.display.set_mode(
+                    # timeout = 100000
+
+                    real_screen = pygame.display.set_mode(
                         (event.w, event.h),
                         pygame.RESIZABLE
                     )
+                    canvas = pygame.Surface((event.w, event.h))
                 
                 if event.type == pygame.MOUSEWHEEL:
                     print(event.x, event.y)
                     self.scale += event.y
 
-                if self.scale < 5:
-                    self.scale = 5
+                if self.scale < 15:
+                    self.scale = 15
 
             # limit to 720 fps (hopefully)
             if (new_time - prev_time) >= 1000 / 720 and self.finished_drawing:
-                draw_thread = threading.Thread(target = self.draw_people)
-                draw_thread.start()
-                pygame.display.update()
+                    # let's apply the results of previous render
+                    rw, rh  = real_screen.get_size()
+                    if rw == cw and rh == ch:
+                        canvas = pygame.transform.flip(canvas, False, True)
+                        real_screen.blit(canvas, (0, 0))
+                        pygame.display.update()
+
+                    cw, ch  = canvas.get_size()
+                    draw_thread = threading.Thread(target = self.draw_screen, args = (canvas,))
+                    draw_thread.start()
+
+
             # self.draw_people()
             # Fill the background with white
             # self.screen.fill((255, 255, 255))
@@ -207,7 +338,9 @@ class Tester:
 
             # Flip the display
             # pygame.display.flip()
-                
+        # self.micro_recorder.running = False
+        # signal.signal(signal.SIGINT, self.signal_handler)
+        micro_process.kill()
 
 
         # Done! Time to quit.

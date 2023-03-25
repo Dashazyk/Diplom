@@ -138,7 +138,8 @@ class SoundServer:
                     channels=CHANNELS
                 )
                 # print(observer_distance)
-                audio_segment -= observer_distance
+                if observer_distance:
+                    audio_segment -= observer_distance
                 stream.write(audio_segment.raw_data)
                 # play(audio_segment)
 

@@ -9,6 +9,7 @@ from flask import Flask, request
 from camera_utils import Camera, Vector3, Triag, mult, ray
 
 from deepface import DeepFace
+from flask.logging import default_handler
 
 
 class Server:
@@ -51,10 +52,15 @@ class Server:
         
     def upload_data(self):
         api = Flask(__name__)
+        api.logger.removeHandler(default_handler)
 
         @api.route('/people', methods=['GET'])
         def get_companies():
             return json.dumps(self.all_obj_data)
+        
+        @api.route('/camera', methods=['GET'])
+        def get_camera():
+            return json.dumps(self.camera.dict())
         
         @api.route('/observer', methods=['POST'])
         def move_observer():
