@@ -79,7 +79,7 @@ class SoundServer:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 # self.socket = s
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                s.bind((self_host, self_port))
+                s.bind(("0.0.0.0", self_port))
                 print('binded')
                 s.listen()
                 print('listened')
@@ -109,7 +109,7 @@ class SoundServer:
 
     def playback_loop(self):
         FORMAT = pyaudio.paInt16
-        CHANNELS = 2
+        CHANNELS = 1
         RATE = 44100
         
         observer_distance = 0

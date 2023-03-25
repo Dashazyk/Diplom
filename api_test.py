@@ -38,7 +38,6 @@ class Tester:
         self.local_position = Vector3(0, 0, 0)
         self.scale = 30
         self.finished_drawing: bool = True
-        self.micro_recorder = MicroRecorder(url.split(':')[1].lstrip('/'), 50002)
 
     def change_observer_position(self, dx, dy):
         url = self.url + '/observer'
@@ -117,7 +116,7 @@ class Tester:
             pygame.draw.circle(
                 screen, 
                 person_color,
-                [int(ppos.x), int(ppos.y)], 
+                (int(ppos.x), int(ppos.y)), 
                 int(scale * 0.5), 
                 0
             )
@@ -129,7 +128,7 @@ class Tester:
                 iw, ih = img.get_size()
                 # ppos = ppos.add  (Vector3(0, -scale, 0))
                 ppos = ppos.add  (Vector3(0, -ih / 2, 0))
-                screen.blit(img, [int(ppos.x -iw / 2), int(ppos.y)])
+                screen.blit(img, (int(ppos.x -iw / 2), int(ppos.y)))
                 # screen.blit(img, (50, 50))
             # else:
                 
@@ -217,8 +216,6 @@ class Tester:
 
     def main(self):
         # url = 'http://localhost:5000/'
-        micro_process = Process(target=self.micro_recorder.record_sound)
-        micro_process.start()
 
         # Microphone-recording code needs to be above or pygame will capture the micro and nothing will work
         pygame.init()
@@ -227,7 +224,7 @@ class Tester:
         # Set up the drawing window
         def_w = 800
         def_h = 800
-        real_screen = pygame.display.set_mode([def_w, def_h], pygame.RESIZABLE)
+        real_screen = pygame.display.set_mode((def_w, def_h), pygame.RESIZABLE)
         canvas      = pygame.Surface((def_w, def_h))
         
         self.local_position = Vector3(def_w//2, def_h//2, 0)
@@ -347,4 +344,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         url = sys.argv[1]
     tester = Tester(url)
+
+    micro_recorder = MicroRecorder(url.split(':')[1].lstrip('/'), 50002)
+    micro_process  = Process(target=micro_recorder.record_sound)
+    micro_process.start()
+
     tester.main()
