@@ -143,38 +143,41 @@ class Tester:
             cpos.z = 0
             cpos = cpos.scale(scale)
             cpos = cpos.add  (l_pos)
-            hangle = float(self.camera['h_rotation'])
-            dir_vector = Vector3(
-                scale * m.sin(hangle),
-                scale * m.cos(hangle),
-                0
-            )
-            dir_end = cpos.add(dir_vector)
-            # cpos = cpos.add  (Vector3(scale/2, scale/2, 0))
-            # pygame.draw.rect(
-            #     screen, 
-            #     ((50, 127, 50)), 
-            #     pygame.Rect(int(cpos.x), int(cpos.y), scale, scale)
-            # )
-            pygame.draw.line(screen, 
-                ((50, 127, 50)), 
-                [int(cpos.x),    int(cpos.y)   ], 
-                [int(dir_end.x), int(dir_end.y)]
-            )
-            pygame.draw.circle(
-                screen, 
-                ((0, 0, 0)),
-                [int(cpos.x), int(cpos.y)], 
-                int(scale * 0.3), 
-                0
-            )
-            pygame.draw.circle(
-                screen, 
-                ((50, 127, 50)),
-                [int(cpos.x), int(cpos.y)], 
-                int(scale * 0.3), 
-                3
-            )
+
+            if cpos.x > -scale and cpos.y > -scale and cpos.x < w + scale and cpos.y < h + scale:
+                hangle = float(self.camera['h_rotation'])
+                dir_vector = Vector3(
+                    scale * m.sin(hangle),
+                    scale * m.cos(hangle),
+                    0
+                )
+                dir_end = cpos.add(dir_vector)
+                # cpos = cpos.add  (Vector3(scale/2, scale/2, 0))
+                # pygame.draw.rect(
+                #     screen, 
+                #     ((50, 127, 50)), 
+                #     pygame.Rect(int(cpos.x), int(cpos.y), scale, scale)
+                # )
+                pygame.draw.line(screen, 
+                    ((50, 127, 50)), 
+                    [int(cpos.x),    int(cpos.y)   ], 
+                    [int(dir_end.x), int(dir_end.y)]
+                )
+                pygame.draw.circle(
+                    screen, 
+                    ((0, 0, 0)),
+                    [int(cpos.x), int(cpos.y)], 
+                    int(scale * 0.3), 
+                    0
+                )
+                
+                pygame.draw.circle(
+                    screen, 
+                    ((50, 127, 50)),
+                    [int(cpos.x), int(cpos.y)], 
+                    int(scale * 0.3), 
+                    3
+                )
 
     def draw_mousepos(self, screen):
         sw, sh = screen.get_size()
@@ -244,18 +247,25 @@ class Tester:
         prev_time = time.time() * 1000
 
         cw, ch  = canvas.get_size()
+        next_size = None
+        resize_timeout = 0
         
         while self.running:
             new_time = time.time() * 1000
             current_mpos = None
-            # try:
-                
-            #     print(current_mpos)
-            # except: 
-            #     pass
-            timeout = 0
+
+            #or event.type == pygame.MOUSEMOTION
+            if (resize_timeout <= 0) and next_size:
+                print(resize_timeout, next_size)
+                real_screen = pygame.display.set_mode(
+                    next_size,
+                    pygame.RESIZABLE
+                )
+                canvas = pygame.Surface(next_size)
+                next_size = None
 
             for event in pygame.event.get():
+
                 # print("What is this event? ", event)
 
                 if event.type == QUIT:
@@ -296,8 +306,15 @@ class Tester:
                 elif event.type == pygame.MOUSEBUTTONUP:
                     mouse_tracking = False
                 elif event.type == pygame.MOUSEMOTION:
+                    # if next_size:
+                    #     real_screen = pygame.display.set_mode(
+                    #         next_size,
+                    #         pygame.RESIZABLE
+                    #     )
+                    #     canvas = pygame.Surface(next_size)
+                    #     next_size = None
+
                     raw_mpos = pygame.mouse.get_pos()
-                    # print(raw_mpos)
                     if raw_mpos and len(raw_mpos) == 2:
                         current_mpos: Vector3 = Vector3.from_tuple(raw_mpos)
                         if mouse_tracking:
@@ -306,24 +323,17 @@ class Tester:
                             self.local_position = self.local_position.add(mouse_diff)
                         prev_mpos = current_mpos
                 elif event.type == pygame.VIDEORESIZE:
-                    # There's some code to add back window content here.
-                    # timeout = 100000
-
-                    real_screen = pygame.display.set_mode(
-                        (event.w, event.h),
-                        pygame.RESIZABLE
-                    )
-                    canvas = pygame.Surface((event.w, event.h))
+                    next_size = event.size
+                    resize_timeout = 10
                 
-                # if event.type == pygame.MOUSEWHEEL:
-                #     # print(event.x, event.y)
-                #     self.scale += event.y
-
                 if self.scale < 15:
                     self.scale = 15
 
             # limit to 720 fps (hopefully)
             if (new_time - prev_time) >= 1000 / 720 and self.finished_drawing:
+                    if resize_timeout > 0:
+                        resize_timeout -= 1
+
                     # let's apply the results of previous render
                     rw, rh  = real_screen.get_size()
                     if rw == cw and rh == ch:
@@ -331,6 +341,7 @@ class Tester:
                         real_screen.blit(canvas, (0, 0))
                         pygame.display.update()
 
+                    # canvas = pygame.Surface(real_screen.get_size())
                     cw, ch  = canvas.get_size()
                     draw_thread = threading.Thread(target = self.draw_screen, args = (canvas,))
                     draw_thread.start()
