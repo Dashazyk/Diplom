@@ -74,41 +74,44 @@ class SoundServer:
         self_port = self.self_params['port']  # Port to listen on (non-privileged ports are > 1023)
 
         while self.running:
-            print('Opening socket')
+            # print('Opening socket')
             num = 0
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                # self.socket = s
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                s.bind(("0.0.0.0", self_port))
-                print('binded')
-                s.listen()
-                print('listened')
-                conn, addr = s.accept()
-                print('accepted')
-                print('Opened socket')
-                with conn:
-                    print(f"Connected by {addr}")
-                    while self.running:
-                        try:
-                            data = conn.recv(self.chunk_size)
-                        except:
-                            print('hmm has the client died or something?')
-                        if not data:
-                            break
-                        # conn.sendall(data)
-                        # print(num, data[0])
-                        # frames.append(data)
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    # self.socket = s
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    s.bind(("0.0.0.0", self_port))
+                    print('binded')
+                    s.listen()
+                    print('listened')
+                    conn, addr = s.accept()
+                    print('accepted')
+                    print('Opened socket')
+                    with conn:
+                        print(f"Connected by {addr}")
+                        while self.running:
+                            try:
+                                data = conn.recv(self.chunk_size)
+                            except:
+                                print('hmm has the client died or something?')
+                            if not data:
+                                break
+                            # conn.sendall(data)
+                            # print(num, data[0])
+                            # frames.append(data)
 
-                        # stream.write(data)
-                        self.sound_chunk_queue.append(data)
+                            # stream.write(data)
+                            self.sound_chunk_queue.append(data)
 
-                        # for i in xrange(0, len(signal), lframe):
-                        # data = np.frombuffer(data)
-                        # sd.play(data, RATE, blocking=False)
-                        num += 1 
+                            # for i in xrange(0, len(signal), lframe):
+                            # data = np.frombuffer(data)
+                            # sd.play(data, RATE, blocking=False)
+                            num += 1 
 
-                        if len(self.sound_chunk_queue) > 30:
-                            self.can_play = True
+                            if len(self.sound_chunk_queue) > 30:
+                                self.can_play = True
+            except:
+                pass
 
     def playback_loop(self):
         FORMAT = pyaudio.paInt16
