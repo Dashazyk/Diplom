@@ -257,10 +257,10 @@ class Tester:
             #or event.type == pygame.MOUSEMOTION
             if (resize_timeout <= 0) and next_size:
                 print(resize_timeout, next_size)
-                real_screen = pygame.display.set_mode(
-                    next_size,
-                    pygame.RESIZABLE
-                )
+                # real_screen = pygame.display.set_mode(
+                #     next_size,
+                #     pygame.RESIZABLE
+                # )
                 canvas = pygame.Surface(next_size)
                 next_size = None
 
