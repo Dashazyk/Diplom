@@ -256,7 +256,7 @@ class Tester:
             timeout = 0
 
             for event in pygame.event.get():
-                print("What is this event? ", event)
+                # print("What is this event? ", event)
 
                 if event.type == QUIT:
                     self.running = False
