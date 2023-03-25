@@ -303,6 +303,7 @@ class Tester:
                             self.local_position = self.local_position.add(mouse_diff)
                         prev_mpos = current_mpos
                 elif event.type == pygame.VIDEORESIZE:
+                    self.local_position.y += event.size[1] - ch
                     canvas = pygame.Surface(event.size)
                 
                 if self.scale < 15:
