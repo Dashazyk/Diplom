@@ -283,6 +283,7 @@ class Tester:
                         self.scale -= 5
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_tracking = True
+                    prev_mpos = Vector3.from_tuple(pygame.mouse.get_pos())
 
                     if event.button == 5:
                         self.scale -= 5
