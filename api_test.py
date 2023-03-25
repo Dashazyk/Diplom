@@ -324,7 +324,7 @@ class Tester:
                         prev_mpos = current_mpos
                 elif event.type == pygame.VIDEORESIZE:
                     next_size = event.size
-                    resize_timeout = 10
+                    resize_timeout = 100
                 
                 if self.scale < 15:
                     self.scale = 15
