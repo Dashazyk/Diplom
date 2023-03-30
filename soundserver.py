@@ -74,7 +74,7 @@ class SoundServer:
         self_port = self.self_params['port']  # Port to listen on (non-privileged ports are > 1023)
 
         while self.running:
-            # print('Opening socket')
+            print('Opening socket')
             num = 0
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -110,8 +110,8 @@ class SoundServer:
 
                             if len(self.sound_chunk_queue) > 30:
                                 self.can_play = True
-            except:
-                pass
+            except Exception as e:
+                print(e)
 
     def playback_loop(self):
         FORMAT = pyaudio.paInt16
