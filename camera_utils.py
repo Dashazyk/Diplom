@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import math
 
 class Vector3:
@@ -114,8 +116,8 @@ class Camera:
         self.height: float = height
         self.fov:    float = fov
 
-        self.v_rotation: float = v_rotation
-        self.h_rotation: float = h_rotation
+        self.v_rotation: float = v_rotation * math.pi/180
+        self.h_rotation: float = h_rotation * math.pi/180
 
         self.position = position
 
@@ -129,6 +131,9 @@ class Camera:
         view_pos.z = pos.z + math.sin(self.v_rotation)
 
         return view_pos
+    
+    def __repr__(self):
+        return f"{self.position}, {self.h_rotation}, {self.h_rotation}, {self.width}, {self.height}, {self.fov}"
 
     def clone(self):
         return Camera(

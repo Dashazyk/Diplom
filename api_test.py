@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 import pygame
 import requests
@@ -29,11 +31,11 @@ from pygame.locals import (
 
 class Tester:
     def __init__(self, url) -> None:
-        self.font = None
-        self.camera = None
-        self.url = url
+        self.font    = None
+        self.url     = url
         self.running = False
         self.people  = {}
+        self.cameras = {}
         # self.screen  = None
         self.local_position = Vector3(0, 0, 0)
         self.scale = 30
@@ -52,7 +54,7 @@ class Tester:
         pold_time = 0
         new_time = 0
         urlp = self.url + '/people'
-        urlc = self.url + '/camera'
+        urlc = self.url + '/cameras'
 
         while self.running:
             new_time = time.time()
@@ -71,7 +73,7 @@ class Tester:
                     response = requests.get(urlc)
                     # print(response.text)
                     # print(people)
-                    self.camera = json.loads(response.text)
+                    self.cameras = json.loads(response.text)
                     cold_time = new_time
                 except Exception as e:
                     print(e)
@@ -94,8 +96,8 @@ class Tester:
         #     int(scale * 1.75), 
         #     0
         # )
-        pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(0, l_pos.y-2, w, 4))
-        pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(l_pos.x-2, 0, 4, h))
+        pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(0,         l_pos.y-2, w, 4))
+        pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(l_pos.x-2, 0,         4, h))
 
     def draw_people(self, screen):
         people = self.people
@@ -122,8 +124,13 @@ class Tester:
             )
 
             # print(person)
-            if 'id' in person:
+            img = None
+            if 'face' in person:
+                img = self.font.render(f'{person["face"]}', True, (255, 70, 255))
+            elif 'id' in person:
                 img = self.font.render(f'{person["id"]}', True, (255, 70, 255))
+
+            if img:
                 img = pygame.transform.flip(img, False, True)
                 iw, ih = img.get_size()
                 # ppos = ppos.add  (Vector3(0, -scale, 0))
@@ -137,46 +144,42 @@ class Tester:
         w, h = screen.get_size()
         scale  = self.scale
         l_pos  = self.local_position.copy()
-        if self.camera:
-            cpos = Vector3.from_json(self.camera['position'])
-            cpos.z = 0
-            cpos = cpos.scale(scale)
-            cpos = cpos.add  (l_pos)
+        if self.cameras:
+            for camera in self.cameras:
+                cpos = Vector3.from_json(camera['position'])
+                cpos.z = 0
+                cpos = cpos.scale(scale)
+                cpos = cpos.add  (l_pos)
 
-            if cpos.x > -scale and cpos.y > -scale and cpos.x < w + scale and cpos.y < h + scale:
-                hangle = float(self.camera['h_rotation'])
-                dir_vector = Vector3(
-                    scale * m.sin(hangle),
-                    scale * m.cos(hangle),
-                    0
-                )
-                dir_end = cpos.add(dir_vector)
-                # cpos = cpos.add  (Vector3(scale/2, scale/2, 0))
-                # pygame.draw.rect(
-                #     screen, 
-                #     ((50, 127, 50)), 
-                #     pygame.Rect(int(cpos.x), int(cpos.y), scale, scale)
-                # )
-                pygame.draw.line(screen, 
-                    ((50, 127, 50)), 
-                    [int(cpos.x),    int(cpos.y)   ], 
-                    [int(dir_end.x), int(dir_end.y)]
-                )
-                pygame.draw.circle(
-                    screen, 
-                    ((0, 0, 0)),
-                    [int(cpos.x), int(cpos.y)], 
-                    int(scale * 0.3), 
-                    0
-                )
-                
-                pygame.draw.circle(
-                    screen, 
-                    ((50, 127, 50)),
-                    [int(cpos.x), int(cpos.y)], 
-                    int(scale * 0.3), 
-                    3
-                )
+                if cpos.x > -scale and cpos.y > -scale and cpos.x < w + scale and cpos.y < h + scale:
+                    hangle = float(camera['h_rotation'])
+                    dir_vector = Vector3(
+                        scale * m.sin(hangle),
+                        scale * m.cos(hangle),
+                        0
+                    )
+                    dir_end = cpos.add(dir_vector)
+
+                    pygame.draw.line(
+                        screen, 
+                        ((50, 127, 50)), 
+                        [int(cpos.x),    int(cpos.y)   ], 
+                        [int(dir_end.x), int(dir_end.y)]
+                    )
+                    pygame.draw.circle(
+                        screen, 
+                        ((0, 0, 0)),
+                        [int(cpos.x), int(cpos.y)], 
+                        int(scale * 0.3), 
+                        0
+                    )
+                    pygame.draw.circle(
+                        screen, 
+                        ((50, 127, 50)),
+                        [int(cpos.x), int(cpos.y)], 
+                        int(scale * 0.3), 
+                        3
+                    )
 
     def draw_mousepos(self, screen):
         sw, sh = screen.get_size()
@@ -209,9 +212,6 @@ class Tester:
         self.draw_camera    (screen)
         self.draw_mousepos  (screen)
 
-        # print(x, y)
-
-        # screen = 
         self.finished_drawing = True
 
     def main(self):
@@ -219,7 +219,7 @@ class Tester:
 
         # Microphone-recording code needs to be above or pygame will capture the micro and nothing will work
         pygame.init()
-        self.font = pygame.font.SysFont('monospace', 16)
+        self.font = pygame.font.SysFont('monospace', 18, bold=True)
 
         # Set up the drawing window
         def_w = 800
@@ -234,10 +234,6 @@ class Tester:
 
         api_thread = threading.Thread(target = self.get_people)
         api_thread.start()
-        # micro_thread = threading.Thread(target = self.micro_recorder.record_sound)
-        # micro_thread.start()
-        # micro_process = Process(target=self.micro_recorder.record_sound)
-        # micro_process.start()
 
         prev_mpos: Vector3 = Vector3(0, 0, 0)
         mouse_tracking: bool = False
@@ -260,11 +256,11 @@ class Tester:
                         self.running = False
 
                     if   event.key == K_w:
-                        self.change_observer_position(0,  1)
+                        self.change_observer_position( 0,  1)
                     elif event.key == K_s:
-                        self.change_observer_position(0, -1)
+                        self.change_observer_position( 0, -1)
                     elif event.key == K_d:
-                        self.change_observer_position(1,  0)
+                        self.change_observer_position( 1,  0)
                     elif event.key == K_a:
                         self.change_observer_position(-1,  0)
 
@@ -323,18 +319,6 @@ class Tester:
                     draw_thread = threading.Thread(target = self.draw_screen, args = (canvas,))
                     draw_thread.start()
 
-
-            # self.draw_people()
-            # Fill the background with white
-            # self.screen.fill((255, 255, 255))
-
-            # Draw a solid blue circle in the center
-            # pygame.draw.circle(screen, (0, 0, 255), (250, 250), 75)
-
-            # Flip the display
-            # pygame.display.flip()
-        # self.micro_recorder.running = False
-        # signal.signal(signal.SIGINT, self.signal_handler)
         micro_process.terminate()
 
 

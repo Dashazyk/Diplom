@@ -17,7 +17,7 @@
 # limitations under the License.
 ################################################################################
 
-import sys, math
+import sys
 
 sys.path.append('../')
 import gi
@@ -109,7 +109,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # end of saving
 
         n_frame = None
-        # print()
+        print()
         while l_obj is not None:
             try:
                 # Casting l_obj.data to pyds.NvDsObjectMeta
@@ -120,44 +120,42 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             obj_counter[obj_meta.class_id] += 1
 
             print(obj_meta.confidence)
-            
             if obj_meta.class_id == PGIE_CLASS_ID_PERSON and obj_meta.confidence > 0.3:
-                if True:
-                    obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.0)
-                    box = {
-                        'top'   : obj_meta.rect_params.top,
-                        'left'  : obj_meta.rect_params.left,
-                        'width' : obj_meta.rect_params.width,
-                        'height': obj_meta.rect_params.height
-                    }
+                obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.0)
+                box = {
+                    'top'   : obj_meta.rect_params.top,
+                    'left'  : obj_meta.rect_params.left,
+                    'width' : obj_meta.rect_params.width,
+                    'height': obj_meta.rect_params.height
+                }
+                id = obj_meta.object_id
+                #print('id = ', id, box)
+                #вычисление координат объекта на экране:
+                b_y = box['top'] + box['height'] 
+                b_x = box['left']
+                boxes.append(visualserver.Vector3(b_x, b_y, 0))
+                ids.append(id)
+
+                if frame_number > 16: #n_frame != None:
                     id = obj_meta.object_id
-                    #print('id = ', id, box)
-                    #вычисление координат объекта на экране:
-                    b_y = box['top'] + box['height'] 
-                    b_x = box['left']
-                    boxes.append(visualserver.Vector3(b_x, b_y, 0))
-                    ids.append(id)
 
-                    if frame_number > 16: #n_frame != None:
-                        id = obj_meta.object_id
-
-                        if id not in serv.faced_ids:
-                            n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
-                            frame_copy = np.array(n_frame, copy=True, order='C')
-                            frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
-                                # last_track_id = track_id
-                                # save_image = True
-                            # print('Photo')
-                            # img_path = "{}/frame_{}.{}.jpg".format(folder_name, frame_number, track_id)
-                            Y = int(box['top'])
-                            H = int(box['height'])
-                            X = int(box['left'])
-                            W = int(box['width'])
-                            frame_copy = frame_copy[Y:Y+H,X:X+W]
-                            img_path = "{}/face_{}.jpg".format(folder_name, id)
-                            cv2.imwrite(img_path, frame_copy)
-                            print(f'Saved an img #{frame_number} of id {id}')
-                            # serv.faced_ids[track_id] = None
+                    if id not in serv.faced_ids:
+                        n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
+                        frame_copy = np.array(n_frame, copy=True, order='C')
+                        frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
+                            # last_track_id = track_id
+                            # save_image = True
+                        # print('Photo')
+                        # img_path = "{}/frame_{}.{}.jpg".format(folder_name, frame_number, track_id)
+                        Y = int(box['top'])
+                        H = int(box['height'])
+                        X = int(box['left'])
+                        W = int(box['width'])
+                        frame_copy = frame_copy[Y:Y+H,X:X+W]
+                        img_path = "{}/face_{}.jpg".format(folder_name, id)
+                        cv2.imwrite(img_path, frame_copy)
+                        print(f'Saved an img #{frame_number} of id {id}')
+                        # serv.faced_ids[track_id] = None
             else:
                 obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
             try: 
@@ -204,10 +202,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
     #camr = cam.Camera(8.0, -3.0, 0.0, 2.0, 1.0, 2.0, 6.0, 1.0, 0.0, 0.0)
     #view = cam.Camera(1.0, 0.0, 0.0, 0.5, 0.1, 1.0, 4.0, 1.0, 0.0, 0.0)
     #ps = cam.place_objects(floor, boxes, camr, view)
-
-    # serv.add_new_faces(ids, folder_name)
-    # serv.run(0, boxes, ids)
-
+    serv.add_new_faces(ids, folder_name)
+    serv.run(0, boxes, ids)
     #print(ps)
 
     # pj = []
@@ -221,129 +217,145 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
     return Gst.PadProbeReturn.OK	
 
-def checked_create(result, name = 'element'):
-    if not result:
-        sys.stderr.write(f"Unable to create {name}\n")
-        exit(1)
-    return result
 
 def build_pipeline(sources):
-    Gst.init(None)
-    pipeline  = checked_create(Gst.Pipeline(), "pipeline")
-    streammux = checked_create(Gst.ElementFactory.make("nvstreammux", "Stream-muxer"), "NvStreamMux")
+    # src_type = args[1].split('=')[0]
+    # src_path = args[1].split('=')[1]
 
-    number_of_sources = len(sources)
-    tiler=Gst.ElementFactory.make("nvmultistreamtiler", "nvtiler")
-    if not tiler:
-        sys.stderr.write(" Unable to create tiler \n")
-    tiler_rows=int(math.sqrt(number_of_sources))
-    tiler_columns=int(math.ceil((1.0*number_of_sources)/tiler_rows))
-
-    streammux.set_property('width', 1280 * tiler_rows)
-    streammux.set_property('height', 960 * tiler_columns)
-    # if src_type == 'cam':
-    #     print("Playing cam %s " %src_path)
-    #     # caps_v4l2src.set_property   ('caps', Gst.Caps.from_string("video/x-raw, framerate=30/1"))
-    #     # caps_vidconvsrc.set_property('caps', Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA"))
-    #     # source.set_property   ('device', src_path)
-    #     streammux.set_property('width', 1280)
-    #     streammux.set_property('height', 960)
-    # else:
-    #     print("Playing file %s " %src_path)
-    #     source.set_property   ('location', src_path)
-    #     streammux.set_property('width',  1920)
-    #     streammux.set_property('height', 1080)
-
-    streammux.set_property('batch-size', 1)
-    streammux.set_property('batched-push-timeout', 4000000)
-    mem_type = int(pyds.NVBUF_MEM_CUDA_UNIFIED)
-    # streammux.set_property("nvbuf-memory-type", int(pyds.NVBUF_MEM_CUDA_UNIFIED ))
-    streammux.set_property("nvbuf-memory-type", mem_type)
-    pipeline.add(streammux)
-
+    # print('type:', src_type)
+    # print('path:', src_path)
     cams = []
-    for sidx, source_conf in enumerate(sources):
-        src_type = source_conf[0].split('=')[0]
-        src_path = source_conf[0].split('=')[1]
-        cams.append(source_conf[1])
+    for source in sources:
+        src_type = source[0].split('=')[0]
+        src_path = source[0].split('=')[1]
+        cams.append(source[1])
+
+        # Standard GStreamer initialization
+        Gst.init(None)
 
         # Create gstreamer elements
         # Create Pipeline element that will form a connection of other elements
+        print("Creating Pipeline \n ")
+        pipeline = Gst.Pipeline()
+
+        if not pipeline:
+            sys.stderr.write(" Unable to create Pipeline \n")
 
         # Source element for reading from the file
         print("Creating Source \n ")
         if src_type == 'cam':
-            source = Gst.ElementFactory.make("v4l2src", f"usb-cam-source-{sidx}")
-            source.set_property('device', src_path)
-            caps_v4l2src = checked_create(Gst.ElementFactory.make("capsfilter", f"v4l2src_caps{sidx}"), "v4l2src capsfilter")
-            caps_v4l2src.set_property   ('caps', Gst.Caps.from_string(f"video/x-raw, framerate=20/1"))
-
-            print("Creating Video Converter \n")
-            vidconvsrc = checked_create(Gst.ElementFactory.make("videoconvert", f"convertor1_src{sidx}"), "videoconvert")
-
-            # nvvideoconvert to convert incoming raw buffers to NVMM Mem (NvBufSurface API)
-            nvvidconvsrc    = checked_create(Gst.ElementFactory.make("nvvideoconvert", f"convertor2_src{sidx}"), "Nvvideoconvert")
-            caps_vidconvsrc = checked_create(Gst.ElementFactory.make("capsfilter", f"nvmm_caps{sidx}"), "capsfilter")
-            caps_vidconvsrc.set_property('caps', Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA"))
-            pipeline.add(caps_v4l2src)
-            pipeline.add(vidconvsrc)
-            pipeline.add(nvvidconvsrc)
-            pipeline.add(caps_vidconvsrc)
+            source = Gst.ElementFactory.make("v4l2src", "usb-cam-source")
             # print('Using camera')
         else:
             source = Gst.ElementFactory.make("filesrc", "file-source")
-            h264parser = checked_create(Gst.ElementFactory.make("h264parse", "h264-parser"), "h264 parser")
-            decoder = checked_create(Gst.ElementFactory.make("nvv4l2decoder", "nvv4l2-decoder"), "Nvv4l2 Decoder")
-            pipeline.add(h264parser)
-            pipeline.add(decoder)
             # print('Using file')
-            
 
-            print("Adding elements to Pipeline \n")
-        pipeline.add(source)
+        if not source:
+            sys.stderr.write(" Unable to create Source \n")
 
-        pad_provider = None
+        # Since the data format in the input file is elementary h264 stream,
+        # we need a h264parser
+        # print("Creating H264Parser \n")
+        # h264parser = Gst.ElementFactory.make("h264parse", "h264-parser")
+        # if not h264parser:
+        #     sys.stderr.write(" Unable to create h264 parser \n")
         if src_type == 'cam':
-            source.link      (caps_v4l2src)
-            caps_v4l2src.link(vidconvsrc)
-            vidconvsrc.link  (nvvidconvsrc)
-            nvvidconvsrc.link(caps_vidconvsrc)
-            pad_provider = caps_vidconvsrc
+            caps_v4l2src = Gst.ElementFactory.make("capsfilter", "v4l2src_caps")
+            if not caps_v4l2src:
+                sys.stderr.write(" Unable to create v4l2src capsfilter \n")
         else:
-            source.link    (h264parser)
-            h264parser.link(decoder)
-            pad_provider = decoder
+            h264parser = Gst.ElementFactory.make("h264parse", "h264-parser")
+            if not h264parser:
+                sys.stderr.write(" Unable to create h264 parser \n")
 
-        sinkpad = checked_create(streammux.get_request_pad(f"sink_{sidx}"), "streammux")
-        # srcpad = decoder.get_static_pad("src")
-        srcpad = checked_create(pad_provider.get_static_pad("src"), "srcpad") 
-        srcpad.link   (sinkpad)
+
+        # Adding videoconvert -> nvvideoconvert as not all
+        # raw formats are supported by nvvideoconvert;
+        # Say YUYV is unsupported - which is the common
+        # raw format for many logi usb cams
+        # In case we have a camera with raw format supported in
+        # nvvideoconvert, GStreamer plugins' capability negotiation
+        # shall be intelligent enough to reduce compute by
+        # videoconvert doing passthrough (TODO we need to confirm this)
+
+
+        if src_type == 'cam':
+            # videoconvert to make sure a superset of raw formats are supported
+            print("Creating Video Converter \n")
+            vidconvsrc = Gst.ElementFactory.make("videoconvert", "convertor_src1")
+            if not vidconvsrc:
+                sys.stderr.write(" Unable to create videoconvert \n")
+
+            # nvvideoconvert to convert incoming raw buffers to NVMM Mem (NvBufSurface API)
+            nvvidconvsrc = Gst.ElementFactory.make("nvvideoconvert", "convertor_src2")
+            if not nvvidconvsrc:
+                sys.stderr.write(" Unable to create Nvvideoconvert \n")
+            caps_vidconvsrc = Gst.ElementFactory.make("capsfilter", "nvmm_caps")
+            if not caps_vidconvsrc:
+                sys.stderr.write(" Unable to create capsfilter \n")
+        else:
+            # Use nvdec_h264 for hardware accelerated decode on GPU
+            print("Creating Decoder \n")
+            decoder = Gst.ElementFactory.make("nvv4l2decoder", "nvv4l2-decoder")
+            if not decoder:
+                sys.stderr.write(" Unable to create Nvv4l2 Decoder \n")
 
 
     global serv
     serv = visualserver.Server(cams)
     
+    # Create nvstreammux instance to form batches from one or more sources.
+    print('Creating streammux')
+    streammux = Gst.ElementFactory.make("nvstreammux", "Stream-muxer")
+    if not streammux:
+        sys.stderr.write(" Unable to create NvStreamMux \n")
 
     # Use nvinfer to run inferencing on decoder's output,
     # behaviour of inferencing is set through config file
     print('Creating pgie')
-    pgie = checked_create(Gst.ElementFactory.make("nvinfer", "primary-inference"), "pgie")
+    pgie = Gst.ElementFactory.make("nvinfer", "primary-inference")
+    if not pgie:
+        sys.stderr.write(" Unable to create pgie \n")
 
-    tracker = checked_create(Gst.ElementFactory.make("nvtracker", "tracker"), "tracker")
+    tracker = Gst.ElementFactory.make("nvtracker", "tracker")
+    if not tracker:
+        sys.stderr.write(" Unable to create tracker \n")
 
     # Use convertor to convert from NV12 to RGBA as required by nvosd
-    nvvidconv = checked_create(Gst.ElementFactory.make("nvvideoconvert", "convertor"), "nvvidconv")
+    nvvidconv = Gst.ElementFactory.make("nvvideoconvert", "convertor")
+    if not nvvidconv:
+        sys.stderr.write(" Unable to create nvvidconv \n")
+
     # Create OSD to draw on the converted RGBA buffer
-    nvosd = checked_create(Gst.ElementFactory.make("nvdsosd", "onscreendisplay"), "nvosd")
+    nvosd = Gst.ElementFactory.make("nvdsosd", "onscreendisplay")
+
+    if not nvosd:
+        sys.stderr.write(" Unable to create nvosd \n")
 
     # Finally render the osd output
     if is_aarch64():
         transform = Gst.ElementFactory.make("nvegltransform", "nvegl-transform")
 
     print("Creating EGLSink \n")
-    sink = checked_create(Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer"), "egl sink")
+    sink = Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer")
+    if not sink:
+        sys.stderr.write(" Unable to create egl sink \n")
 
+    if src_type == 'cam':
+        print("Playing cam %s " %src_path)
+        caps_v4l2src.set_property   ('caps', Gst.Caps.from_string("video/x-raw, framerate=30/1"))
+        caps_vidconvsrc.set_property('caps', Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA"))
+        source.set_property   ('device', src_path)
+        streammux.set_property('width', 1280)
+        streammux.set_property('height', 960)
+    else:
+        print("Playing file %s " %src_path)
+        source.set_property   ('location', src_path)
+        streammux.set_property('width',  1920)
+        streammux.set_property('height', 1080)
 
+    streammux.set_property('batch-size', 1)
+    streammux.set_property('batched-push-timeout', 4000000)
     pgie.set_property     ('config-file-path',    "dstest1_pgie_config.txt")
     # Set sync = false to avoid late frame drops at the display-sink
     sink.set_property('sync', False)
@@ -375,18 +387,18 @@ def build_pipeline(sources):
             tracker_enable_past_frame = config.getint('tracker', key)
             tracker.set_property('enable_past_frame', tracker_enable_past_frame)
 
-    # print("Adding elements to Pipeline \n")
-    # pipeline.add(source)
-    # if src_type == 'cam':
-    #     pipeline.add(caps_v4l2src)
-    #     pipeline.add(vidconvsrc)
-    #     pipeline.add(nvvidconvsrc)
-    #     pipeline.add(caps_vidconvsrc)
-    # else:
-    #     pipeline.add(h264parser)
-    #     pipeline.add(decoder)
+    print("Adding elements to Pipeline \n")
+    pipeline.add(source)
+    if src_type == 'cam':
+        pipeline.add(caps_v4l2src)
+        pipeline.add(vidconvsrc)
+        pipeline.add(nvvidconvsrc)
+        pipeline.add(caps_vidconvsrc)
+    else:
+        pipeline.add(h264parser)
+        pipeline.add(decoder)
     
-    # pipeline.add(streammux)
+    pipeline.add(streammux)
     pipeline.add(pgie)
     pipeline.add(tracker)
     pipeline.add(nvvidconv)
@@ -401,28 +413,31 @@ def build_pipeline(sources):
     print("Linking elements in the Pipeline \n")
     # source.link(h264parser)
     # h264parser.link(decoder)
+    pad_provider = None
+    if src_type == 'cam':
+        source.link      (caps_v4l2src)
+        caps_v4l2src.link(vidconvsrc)
+        vidconvsrc.link  (nvvidconvsrc)
+        nvvidconvsrc.link(caps_vidconvsrc)
+        pad_provider = caps_vidconvsrc
+    else:
+        source.link    (h264parser)
+        h264parser.link(decoder)
+        pad_provider = decoder
 
+    sinkpad = streammux.get_request_pad("sink_0")
+    if not sinkpad:
+        sys.stderr.write(" Unable to get the sink pad of streammux \n")
+    # srcpad = decoder.get_static_pad("src")
+    srcpad = pad_provider.get_static_pad("src")
+    if not srcpad:
+        # sys.stderr.write(" Unable to get source pad of decoder \n")
+        sys.stderr.write(" Unable to get source pad of caps_vidconvsrc or decoder\n")
+    srcpad.link   (sinkpad)
     streammux.link(pgie)
     pgie.link     (tracker)
     tracker.link  (nvvidconv)
-    # nvvidconv.link(nvosd)
-
-
-    tiler.set_property("rows",tiler_rows)
-    tiler.set_property("columns",tiler_columns)
-    tiler.set_property("width", 1280)
-    tiler.set_property("height", 960)
-    if not is_aarch64():
-        # Use CUDA unified memory in the pipeline so frames
-        # can be easily accessed on CPU in Python.
-        # mem_type = int(pyds.NVBUF_MEM_CUDA_UNIFIED)
-        streammux.set_property("nvbuf-memory-type", mem_type)
-        nvvidconv.set_property("nvbuf-memory-type", mem_type)
-        tiler.set_property("nvbuf-memory-type", mem_type)
-    pipeline.add(tiler)
-    nvvidconv.link(tiler)
-    tiler.link(nvosd)
-
+    nvvidconv.link(nvosd)
     if is_aarch64():
         nvosd.link    (transform)
         transform.link(sink)

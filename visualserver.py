@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import math
 import sys
 import cv2
@@ -5,6 +7,7 @@ import numpy as np
 import json
 import threading
 from flask import Flask, request
+import pandas
 
 from camera_utils import Camera, Vector3, Triag, mult, ray
 
@@ -14,7 +17,8 @@ from flask.logging import default_handler
 
 class Server:
     # all_client_data = {}
-    def __init__(self, camera: Camera = Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)) -> None:
+    # camera: Camera = Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)
+    def __init__(self, cameras: list) -> None:
         self.all_obj_data: list = []
         uthread = threading.Thread(target = self.upload_data, args = ())
         uthread.setDaemon(True)
@@ -26,7 +30,7 @@ class Server:
             'id': '-1'
         }
         # TODO: proper Camera init later
-        self.camera: Camera = camera
+        self.cameras: Camera = cameras.copy()
         self.cdelta: Camera = Camera(Vector3(0.1, 0.2,  0), 0.05, 0.00)
 
         points: list = [
@@ -55,12 +59,14 @@ class Server:
         api.logger.removeHandler(default_handler)
 
         @api.route('/people', methods=['GET'])
-        def get_companies():
+        def get_people():
+            # print(self.all_obj_data)
             return json.dumps(self.all_obj_data)
         
-        @api.route('/camera', methods=['GET'])
-        def get_camera():
-            return json.dumps(self.camera.dict())
+        @api.route('/cameras', methods=['GET'])
+        def get_cameras():
+            cam_list = [camera.dict() for camera in self.cameras]
+            return json.dumps(cam_list)
         
         @api.route('/observer', methods=['POST'])
         def move_observer():
@@ -80,20 +86,21 @@ class Server:
 
         api.run(host='0.0.0.0')
 
-    def calc_object_positions(self, boxes):
-        z: float = 1.0 / math.tan(self.camera.fov * math.pi / 360.0);
+    def calc_object_positions(self, cam_idx, boxes):
+        camera = self.cameras[cam_idx]
+        z: float = 1.0 / math.tan(camera.fov * math.pi / 360.0);
 
-        dw = 2.0 / (self.camera.width  - 1.0)
-        dh = 2.0 / (self.camera.height - 1.0)
+        dw = 2.0 / (camera.width  - 1.0)
+        dh = 2.0 / (camera.height - 1.0)
 
-        # ct = self.camera.clone()
+        # ct = camera.clone()
         # ct.position = ct.position.add(self.cdelta.position.scale(frame_no))
         # pc = ct.position
         # ct.h_rotation += self.cdelta.h_rotation * frame_no
         # ct.v_rotation += self.cdelta.v_rotation * frame_no
         # pv = ct.get_view_destination()
-        pc = self.camera.position
-        pv = self.camera.get_view_destination()
+        pc = camera.position
+        pv = camera.get_view_destination()
         
 
         bz = pv.diff(pc).norm()
@@ -114,25 +121,26 @@ class Server:
             
             v = Vector3(
                 tx, 
-                ty * self.camera.height / self.camera.width, 
+                ty * camera.height / camera.width, 
                 z
             )
 
             dir_seen = mult(bx, by, bz, v).norm()
-            point = ray(self.floor, self.camera.position, dir_seen)
+            point = ray(self.floor, camera.position, dir_seen)
             points.append( point )
 
         return points
 
     def generate_image(self, step, frame_no = 0, frames = 1):
         # image = None
-        image = np.zeros((self.camera.height, self.camera.width, 3), np.uint8)
-        z: float = 1.0 / math.tan(self.camera.fov * math.pi / 360.0);
+        camera = self.cameras[0]
+        image = np.zeros((camera.height, camera.width, 3), np.uint8)
+        z: float = 1.0 / math.tan(camera.fov * math.pi / 360.0);
 
-        dw = 2.0 / (self.camera.width  - 1.0)
-        dh = 2.0 / (self.camera.height - 1.0)
+        dw = 2.0 / (camera.width  - 1.0)
+        dh = 2.0 / (camera.height - 1.0)
 
-        ct = self.camera.clone()
+        ct = camera.clone()
         ct.position = ct.position.add(self.cdelta.position.scale(frame_no))
         pc = ct.position
         ct.h_rotation += self.cdelta.h_rotation * frame_no
@@ -144,14 +152,14 @@ class Server:
         bx = bz.prod(Vector3(0, 0, 1)).norm()
         by = bx.prod(bz).norm()
 
-        for y in range(0, self.camera.height, step):
-            for x in range(0, self.camera.width, step):
+        for y in range(0, camera.height, step):
+            for x in range(0, camera.width, step):
                 tx = -1.0 + dw * x
                 ty = -1.0 + dh * y            
                 
                 v = Vector3(
                     tx, 
-                    ty * self.camera.height / self.camera.width, 
+                    ty * camera.height / camera.width, 
                     z
                 )
 
@@ -191,9 +199,9 @@ class Server:
                 except Exception as e:
                     print(e)
 
-    def run(self, boxes: list, ids: list = None) -> list:
+    def run(self, cam_idx, boxes: list, ids: list = None) -> list:
         # print('Run')
-        ps = self.calc_object_positions(boxes)
+        ps = self.calc_object_positions(cam_idx, boxes)
 
         # new_ids = set(ids) - set(self.faced_ids.keys())
         # if new_ids:
@@ -220,7 +228,9 @@ class Server:
                     id = ids[pidx]
                     j_dict['id'] = id
                     if id in self.faced_ids:
-                        j_dict['face'] = self.faced_ids[id]
+                        face_name = self.faced_ids[id]
+                        if face_name and (isinstance(face_name, pandas.DataFrame) and not face_name.empty):
+                            j_dict['face'] = self.faced_ids[id]
                 pd.append(j_dict)
 
         # self.all_obj_data = json.dumps(pd, indent = 4)
