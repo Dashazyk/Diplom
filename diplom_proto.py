@@ -35,6 +35,9 @@ import visualserver
 
 import numpy as np
 import cv2
+import os
+import stat
+
 
 from common.is_aarch_64 import is_aarch64
 from common.bus_call    import bus_call
@@ -42,6 +45,12 @@ from common.FPS         import PERF_DATA
 from multiprocessing    import Process
 from soundserver        import SoundServer
 from camera_utils       import Camera, Vector3
+from pathlib            import Path
+
+
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 # import scipy.misc
 # rgb = scipy.misc.toimage(np_array)
@@ -60,17 +69,27 @@ pgie_classes_str = [
 
 serv = None #visualserver.Server([Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)])
 
+last_id = None
 
 def osd_sink_pad_buffer_probe(pad,info,u_data):
+    # print('pad:', pad)
+    # for k in pad.__dict__:
+    #     print(k, pad.__dict__[k])
+    global last_id
+    sid = pad.get_stream_id ()
+    if sid != last_id:
+        print(sid)
+        last_id = sid
+
     boxes = []
-    ids = []
+    ids   = []
     frame_number=0
     #Intiallizing object counter with 0.
     obj_counter = {
-        PGIE_CLASS_ID_VEHICLE:0,
-        PGIE_CLASS_ID_PERSON:0,
-        PGIE_CLASS_ID_BICYCLE:0,
-        PGIE_CLASS_ID_ROADSIGN:0
+        PGIE_CLASS_ID_VEHICLE:  0,
+        PGIE_CLASS_ID_PERSON:   0,
+        PGIE_CLASS_ID_BICYCLE:  0,
+        PGIE_CLASS_ID_ROADSIGN: 0
     }
     num_rects=0
 
@@ -104,7 +123,10 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # we need to extract faces from our image
         # code bnelow should save the image
 
-        folder_name = '/tmp/diplomya/'
+        folder_name = '/tmp/face_from_frame_storage/'
+        Path( folder_name ).mkdir( parents=True, exist_ok=True )
+        os.chmod(folder_name, 0o0777 )
+
 
         # end of saving
 
@@ -119,7 +141,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 break
             obj_counter[obj_meta.class_id] += 1
 
-            print(obj_meta.confidence)
+            # print(obj_meta.confidence)
             
             if obj_meta.class_id == PGIE_CLASS_ID_PERSON and obj_meta.confidence > 0.3:
                 if True:
@@ -138,10 +160,11 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                     boxes.append(visualserver.Vector3(b_x, b_y, 0))
                     ids.append(id)
 
-                    if frame_number > 16: #n_frame != None:
-                        id = obj_meta.object_id
+                    if True: #frame_number > 16: #n_frame != None:
+                        # print(f'=== {id} ===')
+                        # id = obj_meta.object_id
 
-                        if id not in serv.faced_ids:
+                        if id not in serv.faced_ids or not serv.faced_ids[id]:
                             n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
                             frame_copy = np.array(n_frame, copy=True, order='C')
                             frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
@@ -149,10 +172,10 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                                 # save_image = True
                             # print('Photo')
                             # img_path = "{}/frame_{}.{}.jpg".format(folder_name, frame_number, track_id)
-                            Y = int(box['top'])
+                            Y = int(box['top'   ])
                             H = int(box['height'])
-                            X = int(box['left'])
-                            W = int(box['width'])
+                            X = int(box['left'  ])
+                            W = int(box['width' ])
                             frame_copy = frame_copy[Y:Y+H,X:X+W]
                             img_path = "{}/face_{}.jpg".format(folder_name, id)
                             cv2.imwrite(img_path, frame_copy)
@@ -205,7 +228,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
     #view = cam.Camera(1.0, 0.0, 0.0, 0.5, 0.1, 1.0, 4.0, 1.0, 0.0, 0.0)
     #ps = cam.place_objects(floor, boxes, camr, view)
 
-    serv.add_new_faces(ids, folder_name)
+    serv.add_new_faces(0, ids, folder_name)
     serv.run(0, boxes, ids)
 
     #print(ps)
@@ -410,8 +433,8 @@ def build_pipeline(sources):
 
     tiler.set_property("rows",tiler_rows)
     tiler.set_property("columns",tiler_columns)
-    tiler.set_property("width", 1280)
-    tiler.set_property("height", 960)
+    tiler.set_property("width", 1280*tiler_columns)
+    tiler.set_property("height", 960*tiler_rows)
     if not is_aarch64():
         # Use CUDA unified memory in the pipeline so frames
         # can be easily accessed on CPU in Python.

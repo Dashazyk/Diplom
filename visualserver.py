@@ -20,9 +20,12 @@ class Server:
     # camera: Camera = Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)
     def __init__(self, cameras: list) -> None:
         self.all_obj_data: list = []
+        self.faced_ids: list = []
+        
         for cam in cameras:
             print(cam)
             self.all_obj_data.append([])
+            self.faced_ids.append({})
 
         uthread = threading.Thread(target = self.upload_data, args = ())
         uthread.setDaemon(True)
@@ -51,7 +54,7 @@ class Server:
         # которого раньше не было, надо его засунуть в ГлубокоеЛицо 
         # с целью выяснения, а чьё оно, это лицо,
         # и запомнить соответствие ГлубокоПотоковому ID
-        self.faced_ids: dict = {}
+
 
         # x = threading.Thread(target=SoundServer, args=('localhost',))
         # sound_server = SoundServer()
@@ -64,7 +67,6 @@ class Server:
 
         @api.route('/people', methods=['GET'])
         def get_people():
-            # print(self.all_obj_data)
             full_list = []
             for cam_batch in self.all_obj_data:
                 full_list.extend(cam_batch)
@@ -78,10 +80,6 @@ class Server:
         
         @api.route('/observer', methods=['POST'])
         def move_observer():
-            print('moving observer')
-            # print(request.json)
-            # print(type(request.json))
-
             data = request.json
             if 'dx' in data:
                 self.observer['x'] += data['dx']
@@ -183,32 +181,31 @@ class Server:
 
         return image
 
-    def add_new_faces(self, ids, faces_path, db_path = '/home/dasha/Pictures/Faces'):
-        new_ids = set(ids) - set(self.faced_ids.keys())
+    def add_new_faces(self, cam_idx, ids, faces_path, db_path = '/home/dasha/Pictures/Faces'):
+        new_ids = set(ids) - set(self.faced_ids[cam_idx].keys())
         if new_ids:
-            pass
+            print(new_ids)
             # идов пришло больше чем знаем
             # print(new_ids)
             for id in new_ids:
                 # print(id)
                 # self.faced_ids[id] = None
                 try:
-                    self.faced_ids[id] = DeepFace.find(
+                    self.faced_ids[cam_idx][id] = DeepFace.find(
                         # TODO
                         img_path=f'{faces_path}/face_{id}.jpg',
                         db_path = '/home/dasha/Pictures/face_db/',
                         model_name = 'SFace',
                         detector_backend = 'dlib'
                     )
-                    self.faced_ids[id] = (self.faced_ids[id])[0]['identity'].iloc[0].split('/')[-2]
+                    self.faced_ids[cam_idx][id] = (self.faced_ids[cam_idx][id])[0]['identity'].iloc[0].split('/')[-2]
                     print('/================\\')
-                    print(self.faced_ids[id])
+                    print(f'{id}:', self.faced_ids[cam_idx][id])
                     print('\\================/')
                 except Exception as e:
-                    print(e)
+                    print('Exception:', e)
 
     def run(self, cam_idx, boxes: list, ids: list = None) -> list:
-        # print('Run')
         ps = self.calc_object_positions(cam_idx, boxes)
 
         # new_ids = set(ids) - set(self.faced_ids.keys())
@@ -227,26 +224,25 @@ class Server:
         #     #     )
 
         pd = []
-        # print('stored ids:', self.faced_ids)
+
         for pidx, p in enumerate(ps):
-            # print(p.__dict__ if p else None)
+
             if p:
                 j_dict = p.dict().copy()
                 if ids:
                     id = ids[pidx]
                     j_dict['id'] = id
-                    if id in self.faced_ids:
-                        face_name = self.faced_ids[id]
-                        if face_name and (isinstance(face_name, pandas.DataFrame) and not face_name.empty):
-                            j_dict['face'] = self.faced_ids[id]
+                    if id in self.faced_ids[cam_idx]:
+                        face_name = self.faced_ids[cam_idx][id]
+                        print('face_name:', face_name)
+                        # if face_name and (isinstance(face_name, pandas.DataFrame) and not face_name.empty):
+                        j_dict['face'] = self.faced_ids[cam_idx][id]
                 pd.append(j_dict)
 
         # self.all_obj_data = json.dumps(pd, indent = 4)
         # pd.append(self.observer)
         self.all_obj_data[cam_idx] = pd
-        # print(json.dumps(self.all_obj_data, indent = 4))
-        # print()
-        
+
         return ps
 
     def test_run(self, frames, step):
