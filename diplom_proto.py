@@ -196,7 +196,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # print(pyds.get_string(py_nvosd_text_params.display_text))
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
         try:
-            l_frame=l_frame.next
+            l_frame = l_frame.next
         except StopIteration:
             break
 			
@@ -205,8 +205,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
     #view = cam.Camera(1.0, 0.0, 0.0, 0.5, 0.1, 1.0, 4.0, 1.0, 0.0, 0.0)
     #ps = cam.place_objects(floor, boxes, camr, view)
 
-    # serv.add_new_faces(ids, folder_name)
-    # serv.run(0, boxes, ids)
+    serv.add_new_faces(ids, folder_name)
+    serv.run(0, boxes, ids)
 
     #print(ps)
 

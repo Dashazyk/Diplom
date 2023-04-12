@@ -20,6 +20,10 @@ class Server:
     # camera: Camera = Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)
     def __init__(self, cameras: list) -> None:
         self.all_obj_data: list = []
+        for cam in cameras:
+            print(cam)
+            self.all_obj_data.append([])
+
         uthread = threading.Thread(target = self.upload_data, args = ())
         uthread.setDaemon(True)
         uthread.start()
@@ -61,7 +65,11 @@ class Server:
         @api.route('/people', methods=['GET'])
         def get_people():
             # print(self.all_obj_data)
-            return json.dumps(self.all_obj_data)
+            full_list = []
+            for cam_batch in self.all_obj_data:
+                full_list.extend(cam_batch)
+            full_list.append( self.observer )
+            return json.dumps(full_list)
         
         @api.route('/cameras', methods=['GET'])
         def get_cameras():
@@ -234,8 +242,8 @@ class Server:
                 pd.append(j_dict)
 
         # self.all_obj_data = json.dumps(pd, indent = 4)
-        pd.append(self.observer)
-        self.all_obj_data = pd
+        # pd.append(self.observer)
+        self.all_obj_data[cam_idx] = pd
         # print(json.dumps(self.all_obj_data, indent = 4))
         # print()
         
