@@ -191,14 +191,15 @@ class Server:
                 # print(id)
                 # self.faced_ids[id] = None
                 try:
-                    self.faced_ids[cam_idx][id] = DeepFace.find(
+                    found_face = DeepFace.find(
                         # TODO
                         img_path=f'{faces_path}/face_{id}.jpg',
                         db_path = '/home/dasha/Pictures/face_db/',
                         model_name = 'SFace',
                         detector_backend = 'dlib'
                     )
-                    self.faced_ids[cam_idx][id] = (self.faced_ids[cam_idx][id])[0]['identity'].iloc[0].split('/')[-2]
+                    # self.faced_ids[cam_idx][id] = found_face
+                    self.faced_ids[cam_idx][id] = (found_face)[0]['identity'].iloc[0].split('/')[-2]
                     print('/================\\')
                     print(f'{id}:', self.faced_ids[cam_idx][id])
                     print('\\================/')

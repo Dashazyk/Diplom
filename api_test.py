@@ -52,30 +52,35 @@ class Tester:
     def get_people(self, timeout = 100):
         cold_time = 0
         pold_time = 0
-        new_time = 0
+        new_time  = 0
         urlp = self.url + '/people'
         urlc = self.url + '/cameras'
 
+        was_ok = True
         while self.running:
             new_time = time.time()
-            if (new_time - pold_time)*1000 > timeout:
+            if (new_time - pold_time)*1000 > (timeout if was_ok else timeout * 10):
                 try:
+                    pold_time = new_time
                     response = requests.get(urlp)
                     # print(people)
                     self.people = json.loads(response.text)
-                    pold_time = new_time
+                    was_ok = True
                 except Exception as e:
+                    was_ok = False
                     print(e)
 
-            if (new_time - cold_time)*1000 > timeout*10:
+            if (new_time - cold_time)*1000 > (timeout*10 if was_ok else timeout * 10):
                 # print('hmm')
                 try:
+                    cold_time = new_time
                     response = requests.get(urlc)
                     # print(response.text)
                     # print(people)
                     self.cameras = json.loads(response.text)
-                    cold_time = new_time
+                    was_ok = True
                 except Exception as e:
+                    was_ok = False
                     print(e)
 
     def draw_background(self, screen):
@@ -124,18 +129,27 @@ class Tester:
             )
 
             # print(person)
-            img = None
-            if 'face' in person:
-                img = self.font.render(f'{person["face"]}', True, (255, 70, 255))
-            elif 'id' in person:
-                img = self.font.render(f'{person["id"]}', True, (255, 70, 255))
+            # img = None
+            person_text = None
+            person_text_color = (255, 70, 255)
 
-            if img:
+            if int(person['id']) >= 0:
+                person_text = person.get("face", person['id'])
+            else:
+                person_text = 'You'
+                # person_text_color = (255, 70, 255)
+            # if 'face' in person:
+            #     img = self.font.render(f'{person["face"]}', True, (255, 70, 255))
+            # elif 'id' in person:
+            #     img = self.font.render(f'{person["id"]}', True, (255, 70, 255))
+
+            if person_text:
+                img = self.font.render(f'{person_text}', True, person_text_color)
                 img = pygame.transform.flip(img, False, True)
                 iw, ih = img.get_size()
                 # ppos = ppos.add  (Vector3(0, -scale, 0))
-                ppos = ppos.add  (Vector3(0, -ih / 2, 0))
-                screen.blit(img, (int(ppos.x -iw / 2), int(ppos.y)))
+                ppos = ppos.add(Vector3(-iw / 2, -ih / 2, 0))
+                screen.blit(img, (int(ppos.x), int(ppos.y)))
                 # screen.blit(img, (50, 50))
             # else:
                 

@@ -69,17 +69,10 @@ pgie_classes_str = [
 
 serv = None #visualserver.Server([Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)])
 
-last_id = None
-
 def osd_sink_pad_buffer_probe(pad,info,u_data):
     # print('pad:', pad)
     # for k in pad.__dict__:
     #     print(k, pad.__dict__[k])
-    global last_id
-    sid = pad.get_stream_id ()
-    if sid != last_id:
-        print(sid)
-        last_id = sid
 
     boxes = []
     ids   = []
@@ -116,6 +109,11 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             break
 
         frame_number=frame_meta.frame_num
+        # print(
+        #     'fnum:', frame_number, 
+        #     'pad_index:', frame_meta.pad_index, 
+        #     'source_id:', frame_meta.source_id
+        # )
         num_rects = frame_meta.num_obj_meta
         
         l_obj=frame_meta.obj_meta_list
@@ -223,13 +221,14 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         except StopIteration:
             break
 			
-    #вычисляем координаты в комнате:
-    #camr = cam.Camera(8.0, -3.0, 0.0, 2.0, 1.0, 2.0, 6.0, 1.0, 0.0, 0.0)
-    #view = cam.Camera(1.0, 0.0, 0.0, 0.5, 0.1, 1.0, 4.0, 1.0, 0.0, 0.0)
-    #ps = cam.place_objects(floor, boxes, camr, view)
+        #вычисляем координаты в комнате:
+        #camr = cam.Camera(8.0, -3.0, 0.0, 2.0, 1.0, 2.0, 6.0, 1.0, 0.0, 0.0)
+        #view = cam.Camera(1.0, 0.0, 0.0, 0.5, 0.1, 1.0, 4.0, 1.0, 0.0, 0.0)
+        #ps = cam.place_objects(floor, boxes, camr, view)
 
-    serv.add_new_faces(0, ids, folder_name)
-    serv.run(0, boxes, ids)
+        src_id = frame_meta.source_id
+        serv.add_new_faces(src_id, ids, folder_name)
+        serv.run(src_id, boxes, ids)
 
     #print(ps)
 
@@ -256,9 +255,8 @@ def build_pipeline(sources):
     streammux = checked_create(Gst.ElementFactory.make("nvstreammux", "Stream-muxer"), "NvStreamMux")
 
     number_of_sources = len(sources)
-    tiler=Gst.ElementFactory.make("nvmultistreamtiler", "nvtiler")
-    if not tiler:
-        sys.stderr.write(" Unable to create tiler \n")
+    tiler=checked_create(Gst.ElementFactory.make("nvmultistreamtiler", "nvtiler"), "tiler")
+    
     tiler_rows=int(math.sqrt(number_of_sources))
     tiler_columns=int(math.ceil((1.0*number_of_sources)/tiler_rows))
 
@@ -277,7 +275,7 @@ def build_pipeline(sources):
     #     streammux.set_property('width',  1920)
     #     streammux.set_property('height', 1080)
 
-    streammux.set_property('batch-size', 1)
+    streammux.set_property('batch-size', number_of_sources)
     streammux.set_property('batched-push-timeout', 4000000)
     mem_type = int(pyds.NVBUF_MEM_CUDA_UNIFIED)
     # streammux.set_property("nvbuf-memory-type", int(pyds.NVBUF_MEM_CUDA_UNIFIED ))
@@ -295,6 +293,7 @@ def build_pipeline(sources):
 
         # Source element for reading from the file
         print("Creating Source \n ")
+        
         if src_type == 'cam':
             source = Gst.ElementFactory.make("v4l2src", f"usb-cam-source-{sidx}")
             source.set_property('device', src_path)
@@ -325,7 +324,7 @@ def build_pipeline(sources):
             print("Adding elements to Pipeline \n")
         pipeline.add(source)
 
-        pad_provider = None
+
         if src_type == 'cam':
             source.link      (caps_v4l2src)
             caps_v4l2src.link(vidconvsrc)
@@ -367,12 +366,12 @@ def build_pipeline(sources):
     sink = checked_create(Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer"), "egl sink")
 
 
-    pgie.set_property     ('config-file-path',    "dstest1_pgie_config.txt")
+    pgie.set_property     ('config-file-path',    "configs/pgie_config.ini")
     # Set sync = false to avoid late frame drops at the display-sink
     sink.set_property('sync', False)
     #Set properties of tracker
     config = configparser.ConfigParser()
-    config.read    ('dstest2_tracker_config.txt')
+    config.read    ('configs/tracker_config.ini')
     config.sections()
 
     for key in config['tracker']:
@@ -431,8 +430,8 @@ def build_pipeline(sources):
     # nvvidconv.link(nvosd)
 
 
-    tiler.set_property("rows",tiler_rows)
-    tiler.set_property("columns",tiler_columns)
+    tiler.set_property("rows",    tiler_rows)
+    tiler.set_property("columns", tiler_columns)
     tiler.set_property("width", 1280*tiler_columns)
     tiler.set_property("height", 960*tiler_rows)
     if not is_aarch64():
@@ -443,14 +442,16 @@ def build_pipeline(sources):
         nvvidconv.set_property("nvbuf-memory-type", mem_type)
         tiler.set_property("nvbuf-memory-type", mem_type)
     pipeline.add(tiler)
-    nvvidconv.link(tiler)
-    tiler.link(nvosd)
+    # nvvidconv.link(tiler)
+    # tiler.link(nvosd)
+    nvvidconv.link(nvosd)
 
     if is_aarch64():
         nvosd.link    (transform)
-        transform.link(sink)
+        transform.link(tiler)
     else:
-        nvosd.link(sink)
+        nvosd.link(tiler)
+    tiler.link(sink)
 
     # create an event loop and feed gstreamer bus mesages to it
     loop = GLib.MainLoop  ()
@@ -461,9 +462,7 @@ def build_pipeline(sources):
     # Lets add probe to get informed of the meta data generated, we add probe to
     # the sink pad of the osd element, since by that time, the buffer would have
     # had got all the metadata.
-    osdsinkpad = nvosd.get_static_pad("sink")
-    if not osdsinkpad:
-        sys.stderr.write(" Unable to get sink pad of nvosd \n")
+    osdsinkpad = checked_create(nvosd.get_static_pad("sink"), "sink pad of nvosd")
 
     osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
 

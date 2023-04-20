@@ -1,5 +1,5 @@
 {
-    "cam0": {
+    "#cam0": {
         "source": "/dev/video0",
         "position": [8, 3, -3],
         "params": [180, 0, 1280, 960, 55]
