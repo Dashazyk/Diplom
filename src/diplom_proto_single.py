@@ -63,7 +63,7 @@ serv = None #visualserver.Server([Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800,
 
 def osd_sink_pad_buffer_probe(pad,info,u_data):
     boxes = []
-    ids = []
+    ids   = []
     frame_number=0
     #Intiallizing object counter with 0.
     obj_counter = {

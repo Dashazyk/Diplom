@@ -108,7 +108,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         except StopIteration:
             break
 
-        frame_number=frame_meta.frame_num
+        frame_number = frame_meta.frame_num
         # print(
         #     'fnum:', frame_number, 
         #     'pad_index:', frame_meta.pad_index, 
@@ -143,7 +143,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             
             if obj_meta.class_id == PGIE_CLASS_ID_PERSON and obj_meta.confidence > 0.3:
                 if True:
-                    obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.0)
+                    obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.5)
                     box = {
                         'top'   : obj_meta.rect_params.top,
                         'left'  : obj_meta.rect_params.left,
@@ -180,7 +180,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                             print(f'Saved an img #{frame_number} of id {id}')
                             # serv.faced_ids[track_id] = None
             else:
-                obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.0)
+                obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.5)
             try: 
                 l_obj=l_obj.next
             except StopIteration:
