@@ -206,8 +206,11 @@ class Server:
                 except Exception as e:
                     print('Exception:', e)
 
-    def run(self, cam_idx, boxes: list, ids: list = None) -> list:
-        ps = self.calc_object_positions(cam_idx, boxes)
+    def add_people(self, cam_idx, boxes: list, ids: list = None) -> list:
+        for box in boxes:
+            print('    box:', box)
+
+        positions = self.calc_object_positions(cam_idx, boxes)
 
         # new_ids = set(ids) - set(self.faced_ids.keys())
         # if new_ids:
@@ -226,10 +229,10 @@ class Server:
 
         pd = []
 
-        for pidx, p in enumerate(ps):
-
-            if p:
-                j_dict = p.dict().copy()
+        for pidx, position in enumerate(positions):
+            print('    position:', pidx, position)
+            if position:
+                j_dict = position.dict().copy()
                 if ids:
                     id = ids[pidx]
                     j_dict['id'] = id
@@ -244,7 +247,7 @@ class Server:
         # pd.append(self.observer)
         self.all_obj_data[cam_idx] = pd
 
-        return ps
+        return positions
 
     def test_run(self, frames, step):
         boxes = [

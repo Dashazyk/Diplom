@@ -228,7 +228,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
         src_id = frame_meta.source_id
         serv.add_new_faces(src_id, ids, folder_name)
-        serv.run(src_id, boxes, ids)
+        serv.add_people   (src_id, boxes, ids)
 
     #print(ps)
 

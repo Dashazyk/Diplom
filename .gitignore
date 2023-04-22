@@ -1,5 +1,6 @@
 .mkv
 *.mkv
+*.idea
 videos/
 samples/
 __pycache__/

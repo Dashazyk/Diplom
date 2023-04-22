@@ -2,7 +2,6 @@
 FROM nvcr.io/nvidia/deepstream:6.2-devel
 
 RUN mkdir -p /diplom/src
-COPY src/ /diplom/src
 
 WORKDIR /diplom
 #ENV GST_LIBS="-lgstreamer-1.0 -lgobject-2.0 -lglib-2.0"
@@ -51,6 +50,7 @@ ENV PYTHONPATH=/opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/
 # To get video driver libraries at runtime (libnvidia-encode.so/libnvcuvid.so)
 ENV NVIDIA_DRIVER_CAPABILITIES $NVIDIA_DRIVER_CAPABILITIES,video
 
+COPY src/ /diplom/src
 WORKDIR /diplom/src
 
-ENTRYPOINT ["bash"]
+ENTRYPOINT ["python3", "/diplom/src/diplom_proto.py"]
