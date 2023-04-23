@@ -33,4 +33,4 @@ ENV NVIDIA_DRIVER_CAPABILITIES $NVIDIA_DRIVER_CAPABILITIES,video
 COPY src/ /diplom/src
 WORKDIR /diplom/src
 
-ENTRYPOINT ["python3", "/diplom/src/server/diplom_proto.py"]
+ENTRYPOINT ["python3", "/diplom/src/server/diplom_proto.py", "cpath=/diplom/src/server/configs/"]

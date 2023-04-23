@@ -44,7 +44,7 @@ from common.bus_call    import bus_call
 from common.FPS         import PERF_DATA
 from multiprocessing    import Process
 from soundserver        import SoundServer
-from camera_utils       import Camera, Vector3
+from utils.camera_utils import Camera, Vector3
 from pathlib            import Path
 
 
@@ -249,7 +249,7 @@ def checked_create(result, name = 'element'):
         exit(1)
     return result
 
-def build_pipeline(sources):
+def build_pipeline(sources, cdir="configs/"):
     Gst.init(None)
     pipeline  = checked_create(Gst.Pipeline(), "pipeline")
     streammux = checked_create(Gst.ElementFactory.make("nvstreammux", "Stream-muxer"), "NvStreamMux")
@@ -366,12 +366,14 @@ def build_pipeline(sources):
     sink = checked_create(Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer"), "egl sink")
 
 
-    pgie.set_property     ('config-file-path',    "configs/pgie_config.ini")
+    pgie.set_property     ('config-file-path',    f"{cdir}/pgie_config.ini")
+    # pgie.set_property('config-file-path', "configs/pgie_config.ini")
     # Set sync = false to avoid late frame drops at the display-sink
     sink.set_property('sync', False)
     #Set properties of tracker
     config = configparser.ConfigParser()
-    config.read    ('configs/tracker_config.ini')
+    # config.read    ('configs/tracker_config.ini')
+    config.read(f'{cdir}/tracker_config.ini')
     config.sections()
 
     for key in config['tracker']:
@@ -484,8 +486,9 @@ def main(args):
     # sound_process = Process(target=sound.run)
     # sound_process.start()
 
+    cdir = args.get('cpath', './')
     config = {}
-    config_path = "configs/camconf.json"
+    config_path = f"{cdir}/camconf.json"
     if config_path:
         with open(config_path, 'r') as config_file:
             config = json.loads(config_file.read())
@@ -504,12 +507,18 @@ def main(args):
 
     for source in sources:
         print(source)
-    build_pipeline(sources)
+    build_pipeline(sources, cdir)
 
     # sound_process.terminate()
     return 0
     
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+    args = {}
+    for arg in sys.argv:
+        if '=' in arg:
+            sarg = arg.split('=')
+            args[sarg[0]] = sarg[1]
+    sys.exit(main(args))
+    # sys.exit(main(sys.argv))
 

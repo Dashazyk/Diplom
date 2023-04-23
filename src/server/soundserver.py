@@ -12,7 +12,7 @@ import signal
 import sys
 
 from time import sleep
-from camera_utils import Vector3
+from utils.camera_utils import Vector3
 from pydub import AudioSegment
 from pydub.playback import play
 

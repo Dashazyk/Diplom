@@ -9,7 +9,7 @@ import threading
 from flask import Flask, request
 import pandas
 
-from camera_utils import Camera, Vector3, Triag, mult, ray
+from utils.camera_utils import Camera, Vector3, Triag, mult, ray
 
 from deepface import DeepFace
 from flask.logging import default_handler
