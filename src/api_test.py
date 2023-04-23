@@ -47,7 +47,7 @@ class Tester:
             'dx': dx,
             'dy': dy
         }
-        requests.post(url, json=data)
+        requests.patch(url, json=data)
 
     def get_people(self, timeout = 100):
         cold_time = 0

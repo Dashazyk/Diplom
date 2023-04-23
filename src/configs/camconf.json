@@ -1,11 +1,11 @@
 {
-    "#cam0": {
-        "source": "/dev/video0",
+    "cam0": {
+        "source": "/dev/video2",
         "position": [8, 3, -3],
         "params": [180, 0, 1280, 960, 55]
     },
-    "cam1": {
-        "source": "/dev/video2",
+    "#cam1": {
+        "source": "/dev/video0",
         "position": [9, -1, -3],
         "params": [-60, -45, 1280, 960, 55]
     }

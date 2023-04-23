@@ -485,7 +485,7 @@ def main(args):
     # sound_process.start()
 
     config = {}
-    config_path = "camconf.json"
+    config_path = "configs/camconf.json"
     if config_path:
         with open(config_path, 'r') as config_file:
             config = json.loads(config_file.read())

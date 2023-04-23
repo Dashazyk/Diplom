@@ -37,7 +37,7 @@ class Server:
             'id': '-1'
         }
         # TODO: proper Camera init later
-        self.cameras: Camera = cameras.copy()
+        self.cameras: list = cameras.copy()
         self.cdelta: Camera = Camera(Vector3(0.1, 0.2,  0), 0.05, 0.00)
 
         points: list = [
@@ -78,7 +78,7 @@ class Server:
             cam_list = [camera.dict() for camera in self.cameras]
             return json.dumps(cam_list)
         
-        @api.route('/observer', methods=['POST'])
+        @api.route('/observer', methods=['PATCH'])
         def move_observer():
             data = request.json
             if 'dx' in data:
@@ -94,7 +94,8 @@ class Server:
 
     def calc_object_positions(self, cam_idx, boxes):
         camera = self.cameras[cam_idx]
-        z: float = 1.0 / math.tan(camera.fov * math.pi / 360.0);
+        # print('  camera:', camera)
+        z: float = 1.0 / math.tan(camera.fov * math.pi / 360.0)
 
         dw = 2.0 / (camera.width  - 1.0)
         dh = 2.0 / (camera.height - 1.0)
@@ -107,7 +108,9 @@ class Server:
         # pv = ct.get_view_destination()
         pc = camera.position
         pv = camera.get_view_destination()
-        
+
+        print(f'  pc: {pc}')
+        print(f'  pv: {pv}')
 
         bz = pv.diff(pc).norm()
         bx = bz.prod(Vector3(0, 0, 1)).norm()
@@ -133,6 +136,7 @@ class Server:
 
             dir_seen = mult(bx, by, bz, v).norm()
             point = ray(self.floor, camera.position, dir_seen)
+            print('  point: {point}')
             points.append( point )
 
         return points
@@ -207,8 +211,8 @@ class Server:
                     print('Exception:', e)
 
     def add_people(self, cam_idx, boxes: list, ids: list = None) -> list:
-        for box in boxes:
-            print('    box:', box)
+        # for box in boxes:
+        #     print('    box:', box)
 
         positions = self.calc_object_positions(cam_idx, boxes)
 
