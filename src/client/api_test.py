@@ -44,8 +44,8 @@ class Tester:
     def change_observer_position(self, dx, dy):
         url = self.url + '/observer'
         data = {
-            'dx': dx,
-            'dy': dy
+            'x': dx,
+            'y': dy
         }
         requests.patch(url, json=data)
 

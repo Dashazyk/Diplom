@@ -79,14 +79,14 @@ class Server:
             return json.dumps(cam_list)
         
         @api.route('/observer', methods=['PATCH'])
-        def move_observer():
+        def delta_move_observer():
             data = request.json
-            if 'dx' in data:
-                self.observer['x'] += data['dx']
-            if 'dy' in data:
-                self.observer['y'] += data['dy']
-            if 'dz' in data:
-                self.observer['z'] += data['dz']
+            if 'x' in data:
+                self.observer['x'] += data['x']
+            if 'y' in data:
+                self.observer['y'] += data['y']
+            if 'z' in data:
+                self.observer['z'] += data['z']
 
             return json.dumps(self.observer)
 
@@ -109,8 +109,8 @@ class Server:
         pc = camera.position
         pv = camera.get_view_destination()
 
-        print(f'  pc: {pc}')
-        print(f'  pv: {pv}')
+        # print(f'  pc: {pc}')
+        # print(f'  pv: {pv}')
 
         bz = pv.diff(pc).norm()
         bx = bz.prod(Vector3(0, 0, 1)).norm()
@@ -136,7 +136,7 @@ class Server:
 
             dir_seen = mult(bx, by, bz, v).norm()
             point = ray(self.floor, camera.position, dir_seen)
-            print('  point: {point}')
+            # print('  point: {point}')
             points.append( point )
 
         return points

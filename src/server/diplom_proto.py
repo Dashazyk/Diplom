@@ -366,7 +366,7 @@ def build_pipeline(sources, cdir="configs/"):
     sink = checked_create(Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer"), "egl sink")
 
 
-    pgie.set_property     ('config-file-path',    f"{cdir}/pgie_config.ini")
+    pgie.set_property     ('config-file-path',    f"{cdir}/pgie_config_alt.ini")
     # pgie.set_property('config-file-path', "configs/pgie_config.ini")
     # Set sync = false to avoid late frame drops at the display-sink
     sink.set_property('sync', False)
