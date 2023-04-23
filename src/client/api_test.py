@@ -6,7 +6,7 @@ import requests
 import threading
 import time
 import json
-from camera_utils import Vector3
+from utils.camera_utils import Vector3
 from micro_recorder import MicroRecorder
 from multiprocessing import Process
 import signal

@@ -26,11 +26,11 @@ RUN apt -y install python3-pandas
 RUN apt -y install python3-pyaudio
 RUN apt -y install python3-pydub
 
-ENV PYTHONPATH=/opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/apps
+ENV PYTHONPATH=/opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/apps:/diplom/src/
 # To get video driver libraries at runtime (libnvidia-encode.so/libnvcuvid.so)
 ENV NVIDIA_DRIVER_CAPABILITIES $NVIDIA_DRIVER_CAPABILITIES,video
 
 COPY src/ /diplom/src
 WORKDIR /diplom/src
 
-ENTRYPOINT ["python3", "/diplom/src/diplom_proto.py"]
+ENTRYPOINT ["python3", "/diplom/src/server/diplom_proto.py"]
