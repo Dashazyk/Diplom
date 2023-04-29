@@ -55,19 +55,97 @@ log.setLevel(logging.ERROR)
 # import scipy.misc
 # rgb = scipy.misc.toimage(np_array)
 
-PGIE_CLASS_ID_VEHICLE  = 0
-PGIE_CLASS_ID_BICYCLE  = 1
-PGIE_CLASS_ID_PERSON   = 2
-PGIE_CLASS_ID_ROADSIGN = 3
+# PGIE_CLASS_ID_PERSON   = 0
+# PGIE_CLASS_ID_BICYCLE  = 1
+# PGIE_CLASS_ID_VEHICLE  = 2
+# PGIE_CLASS_ID_ROADSIGN = 3
 
-pgie_classes_str = [
-    "vechicle",
-    "bichicle",
-    "personichle",
-    "roadsignichle"
+yolo_objects = [
+    "person",
+    "bicycle",
+    "car",
+    "motorbike",
+    "aeroplane",
+    "bus",
+    "train",
+    "truck",
+    "boat",
+    "traffic light",
+    "fire hydrant",
+    "stop sign",
+    "parking meter",
+    "bench",
+    "bird",
+    "cat",
+    "dog",
+    "horse",
+    "sheep",
+    "cow",
+    "elephant",
+    "bear",
+    "zebra",
+    "giraffe",
+    "backpack",
+    "umbrella",
+    "handbag",
+    "tie",
+    "suitcase",
+    "frisbee",
+    "skis",
+    "snowboard",
+    "sports ball",
+    "kite",
+    "baseball bat",
+    "baseball glove",
+    "skateboard",
+    "surfboard",
+    "tennis racket",
+    "bottle",
+    "wine glass",
+    "cup",
+    "fork",
+    "knife",
+    "spoon",
+    "bowl",
+    "banana",
+    "apple",
+    "sandwich",
+    "orange",
+    "broccoli",
+    "carrot",
+    "hot dog",
+    "pizza",
+    "donut",
+    "cake",
+    "chair",
+    "sofa",
+    "pottedplant",
+    "bed",
+    "diningtable",
+    "toilet",
+    "tvmonitor",
+    "laptop",
+    "mouse",
+    "remote",
+    "keyboard",
+    "cell phone",
+    "microwave",
+    "oven",
+    "toaster",
+    "sink",
+    "refrigerator",
+    "book",
+    "clock",
+    "vase",
+    "scissors",
+    "teddy bear",
+    "hair drier",
+    "toothbrush",
 ]
 
+
 serv = None #visualserver.Server([Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)])
+face_db_dir = None
 
 def osd_sink_pad_buffer_probe(pad,info,u_data):
     # print('pad:', pad)
@@ -77,19 +155,14 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
     boxes = []
     ids   = []
     frame_number=0
-    #Intiallizing object counter with 0.
-    obj_counter = {
-        PGIE_CLASS_ID_VEHICLE:  0,
-        PGIE_CLASS_ID_PERSON:   0,
-        PGIE_CLASS_ID_BICYCLE:  0,
-        PGIE_CLASS_ID_ROADSIGN: 0
-    }
     num_rects=0
+    yolo_objects_counts = [0] * len(yolo_objects)
 
     gst_buffer = info.get_buffer()
     if not gst_buffer:
         print("Unable to get GstBuffer ")
         return
+
 
     # Retrieve batch metadata from the gst_buffer
     # Note that pyds.gst_buffer_get_nvds_batch_meta() expects the
@@ -108,6 +181,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         except StopIteration:
             break
 
+        src_id = frame_meta.source_id
         frame_number = frame_meta.frame_num
         # print(
         #     'fnum:', frame_number, 
@@ -123,13 +197,18 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
         folder_name = '/tmp/face_from_frame_storage/'
         Path( folder_name ).mkdir( parents=True, exist_ok=True )
-        os.chmod(folder_name, 0o0777 )
+        os.chmod(folder_name, 0o0777)
 
 
         # end of saving
 
         n_frame = None
         # print()
+        # print('face directory:', face_db_dir)
+        # if id not in serv.faced_ids[src_id] or not serv.faced_ids[src_id][id]:
+        for faced_id in serv.faced_ids[src_id]:
+            print(f'faced id of src#{src_id}: {faced_id}')
+
         while l_obj is not None:
             try:
                 # Casting l_obj.data to pyds.NvDsObjectMeta
@@ -137,13 +216,16 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 obj_meta=pyds.NvDsObjectMeta.cast(l_obj.data)
             except StopIteration:
                 break
-            obj_counter[obj_meta.class_id] += 1
+            #obj_counter[obj_meta.class_id] += 1
+            yolo_objects_counts[obj_meta.class_id] += 1
 
             # print(obj_meta.confidence)
             
-            if obj_meta.class_id == PGIE_CLASS_ID_PERSON and obj_meta.confidence > 0.3:
+            # if obj_meta.class_id == PGIE_CLASS_ID_PERSON and obj_meta.confidence > 0.3:
+            if yolo_objects[obj_meta.class_id] == "person" and obj_meta.confidence > 0.3:
                 if True:
-                    obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.5)
+                    # transparent because
+                    obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.1)
                     box = {
                         'top'   : obj_meta.rect_params.top,
                         'left'  : obj_meta.rect_params.left,
@@ -154,7 +236,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                     #print('id = ', id, box)
                     #вычисление координат объекта на экране:
                     b_y = box['top'] + box['height'] 
-                    b_x = box['left']
+                    b_x = box['left'] + box['width'] / 2
                     boxes.append(visualserver.Vector3(b_x, b_y, 0))
                     ids.append(id)
 
@@ -162,10 +244,10 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                         # print(f'=== {id} ===')
                         # id = obj_meta.object_id
 
-                        if id not in serv.faced_ids or not serv.faced_ids[id]:
+                        if id not in serv.faced_ids[src_id] or not serv.faced_ids[src_id][id]:
                             n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
-                            frame_copy = np.array(n_frame, copy=True, order='C')
-                            frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
+                            frame_copy = np.array(n_frame, copy=False, order='C')
+                            # frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
                                 # last_track_id = track_id
                                 # save_image = True
                             # print('Photo')
@@ -174,14 +256,18 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                             H = int(box['height'])
                             X = int(box['left'  ])
                             W = int(box['width' ])
-                            frame_copy = frame_copy[Y:Y+H,X:X+W]
+                            cv2.rectangle(frame_copy, (X, Y), (X + W, Y + H), (0, 100, 0), 5)
+                            frame_copy = frame_copy[Y:Y+H, X:X+W]
+                            # cv2.line(frame_copy, (0, 0), (100, 100), (255, 0, 0), 5)
+                            print(f'Copying frame from ({Y}, {X}) to ({Y+H}, {X+W})')
                             img_path = "{}/face_{}.jpg".format(folder_name, id)
                             cv2.imwrite(img_path, frame_copy)
                             print(f'Saved an img #{frame_number} of id {id}')
                             # serv.faced_ids[track_id] = None
             else:
-                obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.5)
-            try: 
+                obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.1)
+                pass
+            try:
                 l_obj=l_obj.next
             except StopIteration:
                 break
@@ -197,7 +283,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         # memory will not be claimed by the garbage collector.
         # Reading the display_text field here will return the C address of the
         # allocated string. Use pyds.get_string() to get the string content.
-        py_nvosd_text_params.display_text = "Frame Number={} Number of Objects={} Vehicle_count={} Person_count={}".format(frame_number, num_rects, obj_counter[PGIE_CLASS_ID_VEHICLE], obj_counter[PGIE_CLASS_ID_PERSON])
+        # py_nvosd_text_params.display_text = "Frame Number={} Number of Objects={} Vehicle_count={} Person_count={}".format(frame_number, num_rects, obj_counter[PGIE_CLASS_ID_VEHICLE], obj_counter[PGIE_CLASS_ID_PERSON])
 
         # Now set the offsets where the string should appear
         py_nvosd_text_params.x_offset = 10
@@ -226,8 +312,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         #view = cam.Camera(1.0, 0.0, 0.0, 0.5, 0.1, 1.0, 4.0, 1.0, 0.0, 0.0)
         #ps = cam.place_objects(floor, boxes, camr, view)
 
-        src_id = frame_meta.source_id
-        serv.add_new_faces(src_id, ids, folder_name)
+        serv.add_new_faces(src_id, ids, folder_name, face_db_dir)
         serv.add_people   (src_id, boxes, ids)
 
     #print(ps)
@@ -260,8 +345,13 @@ def build_pipeline(sources, cdir="configs/"):
     tiler_rows=int(math.sqrt(number_of_sources))
     tiler_columns=int(math.ceil((1.0*number_of_sources)/tiler_rows))
 
-    streammux.set_property('width', 1280 * tiler_rows)
-    streammux.set_property('height', 960 * tiler_columns)
+    # tiler_rows, tiler_columns = tiler_columns, tiler_rows
+
+    print('Tiler rows', tiler_rows)
+    print('Tiler cols', tiler_columns)
+
+    streammux.set_property('width', 1280 )
+    streammux.set_property('height', 960 )
     # if src_type == 'cam':
     #     print("Playing cam %s " %src_path)
     #     # caps_v4l2src.set_property   ('caps', Gst.Caps.from_string("video/x-raw, framerate=30/1"))
@@ -366,7 +456,7 @@ def build_pipeline(sources, cdir="configs/"):
     sink = checked_create(Gst.ElementFactory.make("nveglglessink", "nvvideo-renderer"), "egl sink")
 
 
-    pgie.set_property     ('config-file-path',    f"{cdir}/pgie_config_alt.ini")
+    pgie.set_property     ('config-file-path',    f"{cdir}/config_infer_primary_yolov8.ini") #pgie_config_alt.ini
     # pgie.set_property('config-file-path', "configs/pgie_config.ini")
     # Set sync = false to avoid late frame drops at the display-sink
     sink.set_property('sync', False)
@@ -456,9 +546,9 @@ def build_pipeline(sources, cdir="configs/"):
     tiler.link(sink)
 
     # create an event loop and feed gstreamer bus mesages to it
-    loop = GLib.MainLoop  ()
-    bus = pipeline.get_bus()
-    bus.add_signal_watch  ()
+    loop = GLib.MainLoop   ()
+    bus  = pipeline.get_bus()
+    bus.add_signal_watch   ()
     bus.connect ("message", bus_call, loop)
 
     # Lets add probe to get informed of the meta data generated, we add probe to
@@ -487,6 +577,8 @@ def main(args):
     # sound_process.start()
 
     cdir = args.get('cpath', './')
+    global face_db_dir
+    face_db_dir = args.get('facedb', './')
     config = {}
     config_path = f"{cdir}/camconf.json"
     if config_path:

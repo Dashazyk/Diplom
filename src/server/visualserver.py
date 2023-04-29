@@ -38,7 +38,7 @@ class Server:
         }
         # TODO: proper Camera init later
         self.cameras: list = cameras.copy()
-        self.cdelta: Camera = Camera(Vector3(0.1, 0.2,  0), 0.05, 0.00)
+        self.cdelta:  Camera = Camera(Vector3(0.1, 0.2,  0), 0.05, 0.00)
 
         points: list = [
             Vector3(-900,  900, 0),
@@ -185,10 +185,12 @@ class Server:
 
         return image
 
-    def add_new_faces(self, cam_idx, ids, faces_path, db_path = '/home/dasha/Pictures/Faces'):
+    def add_new_faces(self, cam_idx, ids, faces_path, db_path):
+        # return
+
         new_ids = set(ids) - set(self.faced_ids[cam_idx].keys())
         if new_ids:
-            print(new_ids)
+            print('new ids:', new_ids)
             # идов пришло больше чем знаем
             # print(new_ids)
             for id in new_ids:
@@ -198,9 +200,11 @@ class Server:
                     found_face = DeepFace.find(
                         # TODO
                         img_path=f'{faces_path}/face_{id}.jpg',
-                        db_path = '/home/dasha/Pictures/face_db/',
+                        # db_path = '/home/dasha/Pictures/face_db/',
+                        db_path = db_path,
                         model_name = 'SFace',
-                        detector_backend = 'dlib'
+                        detector_backend = 'opencv',
+                        enforce_detection = False
                     )
                     # self.faced_ids[cam_idx][id] = found_face
                     self.faced_ids[cam_idx][id] = (found_face)[0]['identity'].iloc[0].split('/')[-2]

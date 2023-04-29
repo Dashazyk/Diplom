@@ -1,7 +1,7 @@
 # Replace with required container type e.g. base, devel etc in the following line
 FROM nvcr.io/nvidia/deepstream:6.2-devel
 
-RUN mkdir -p /diplom/src
+RUN mkdir -p /diplom
 
 WORKDIR /diplom
 
@@ -16,6 +16,7 @@ RUN apt -y install python3-gi python3-dev python3-gst-1.0 python-gi-dev git pyth
     libglib2.0-dev-bin libgstreamer1.0-dev libtool m4 autoconf automake libgirepository1.0-dev libcairo2-dev
 
 RUN python3 -m pip install deepface
+RUN python3 -m pip install dlib
 
 RUN apt -y install libavcodec-dev libavcodec-extra libavcodec-extra58
 RUN apt -y install libavutil-dev libavutil56
@@ -30,7 +31,16 @@ ENV PYTHONPATH=/opt/nvidia/deepstream/deepstream/sources/deepstream_python_apps/
 # To get video driver libraries at runtime (libnvidia-encode.so/libnvcuvid.so)
 ENV NVIDIA_DRIVER_CAPABILITIES $NVIDIA_DRIVER_CAPABILITIES,video
 
-COPY src/ /diplom/src
+#COPY src/   /diplom/src
+#COPY repos/ /diplom/repos
+RUN mkdir -p /diplom/src
+RUN mkdir -p /diplom/yolo
+RUN mkdir -p /diplom/face_db
 WORKDIR /diplom/src
 
-ENTRYPOINT ["python3", "/diplom/src/server/diplom_proto.py", "cpath=/diplom/src/server/configs/"]
+ENTRYPOINT [                                             \
+	"python3", "/diplom/src/server/diplom_proto.py", \
+	"cpath=/diplom/src/server/configs/",             \
+	"facedb=/diplom/face_db/"                        \
+]
+#ENTRYPOINT ["bash"]
