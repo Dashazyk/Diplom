@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import json
 import threading
-from flask import Flask, request
+from flask import Flask, request, Response
 import pandas
 
 from utils.camera_utils import Camera, Vector3, Triag, mult, ray
@@ -71,12 +71,42 @@ class Server:
             for cam_batch in self.all_obj_data:
                 full_list.extend(cam_batch)
             full_list.append( self.observer )
-            return json.dumps(full_list)
+            return Response(
+                json.dumps(full_list, indent=4),
+                mimetype='application/json'
+            )
         
         @api.route('/cameras', methods=['GET'])
         def get_cameras():
             cam_list = [camera.dict() for camera in self.cameras]
-            return json.dumps(cam_list)
+            return Response(
+                json.dumps(cam_list, indent=4),
+                mimetype='application/json'
+            )
+
+        # @api.route('/camera/<camid>', methods=['PUT'])
+        # def set_camera(camid):
+        #
+        #     return Response(
+        #         json.dumps(self.cameras[camid], indent=4),
+        #         mimetype='application/json'
+        #     )
+        @api.route('/camera/<camid>', methods=['PATCH'])
+        def delta_set_camera(camid):
+            camid = int(camid)
+            data = request.json
+            if len(self.cameras) > camid:
+                self.cameras[camid].position.x += data.get('x', 0)
+                self.cameras[camid].position.y += data.get('y', 0)
+                return Response(
+                    json.dumps(self.cameras[camid], indent=4),
+                    mimetype='application/json'
+                )
+            else:
+                return Response(
+                    json.dumps({}, indent=4),
+                    mimetype='application/json'
+                )
         
         @api.route('/observer', methods=['PATCH'])
         def delta_move_observer():
@@ -88,13 +118,18 @@ class Server:
             if 'z' in data:
                 self.observer['z'] += data['z']
 
-            return json.dumps(self.observer)
+            return Response(
+                json.dumps(self.observer, indent=4),
+                mimetype='application/json'
+            )
 
         api.run(host='0.0.0.0')
 
     def calc_object_positions(self, cam_idx, boxes):
         camera = self.cameras[cam_idx]
-        # print('  camera:', camera)
+        print(f' [{cam_idx}] camera:', camera)
+        print(boxes)
+        print()
         z: float = 1.0 / math.tan(camera.fov * math.pi / 360.0)
 
         dw = 2.0 / (camera.width  - 1.0)
@@ -186,6 +221,13 @@ class Server:
         return image
 
     def add_new_faces(self, cam_idx, ids, faces_path, db_path):
+        face_thread = threading.Thread(
+            target=self._add_new_faces,
+            args=(cam_idx, ids, faces_path, db_path,)
+        )
+        # face_thread.start()
+
+    def _add_new_faces(self, cam_idx, ids, faces_path, db_path):
         # return
 
         new_ids = set(ids) - set(self.faced_ids[cam_idx].keys())
@@ -238,9 +280,10 @@ class Server:
         pd = []
 
         for pidx, position in enumerate(positions):
-            print('    position:', pidx, position)
+            # print('    position:', pidx, position)
             if position:
                 j_dict = position.dict().copy()
+                j_dict['camera'] = cam_idx
                 if ids:
                     id = ids[pidx]
                     j_dict['id'] = id
@@ -248,7 +291,8 @@ class Server:
                         face_name = self.faced_ids[cam_idx][id]
                         print('face_name:', face_name)
                         # if face_name and (isinstance(face_name, pandas.DataFrame) and not face_name.empty):
-                        j_dict['face'] = self.faced_ids[cam_idx][id]
+                        j_dict['face']   = self.faced_ids[cam_idx][id]
+
                 pd.append(j_dict)
 
         # self.all_obj_data = json.dumps(pd, indent = 4)

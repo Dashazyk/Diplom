@@ -126,8 +126,8 @@ class Camera:
         hrad     = math.cos(self.v_rotation)
         pos      = self.position
         
-        view_pos.x = pos.x + math.cos(self.h_rotation) * hrad
-        view_pos.y = pos.y + math.sin(self.h_rotation) * hrad
+        view_pos.x = pos.x + math.sin(self.h_rotation) * hrad
+        view_pos.y = pos.y + math.cos(self.h_rotation) * hrad
         view_pos.z = pos.z + math.sin(self.v_rotation)
 
         return view_pos

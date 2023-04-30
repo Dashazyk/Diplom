@@ -13,6 +13,8 @@ import signal
 import math as m
 
 from pygame.locals import (
+    K_0, K_1, K_2, K_3, K_4,
+    K_5, K_6, K_7, K_8, K_9,
     K_UP,
     K_DOWN,
     K_LEFT,
@@ -40,6 +42,18 @@ class Tester:
         self.local_position = Vector3(0, 0, 0)
         self.scale = 30
         self.finished_drawing: bool = True
+        self.selected_cam4e = None
+
+    def change_camera_position(self, dx, dy):
+        if self.selected_cam4e is not None and self.selected_cam4e < len(self.cameras):
+            url = self.url + f'/camera/{self.selected_cam4e}'
+            data = {
+                'x': dx,
+                'y': dy
+            }
+            requests.patch(url, json=data)
+        else:
+            print('no or wrong cam is selected')
 
     def change_observer_position(self, dx, dy):
         url = self.url + '/observer'
@@ -104,6 +118,16 @@ class Tester:
         pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(0,         l_pos.y-2, w, 4))
         pygame.draw.rect(screen, ((50, 50, 50)), pygame.Rect(l_pos.x-2, 0,         4, h))
 
+
+    def render_centered_text(self, ppos, text, color = (255, 255, 255)):
+        img = self.font.render(f'{text}', True, color)
+        img = pygame.transform.flip(img, False, True)
+        iw, ih = img.get_size()
+        # ppos = ppos.add  (Vector3(0, -scale, 0))
+        ppos = ppos.add(Vector3(-iw / 2, -ih / 2, 0))
+        return img, ppos
+
+
     def draw_people(self, screen):
         people = self.people
         scale  = self.scale
@@ -124,7 +148,7 @@ class Tester:
                 screen, 
                 person_color,
                 (int(ppos.x), int(ppos.y)), 
-                int(scale * 0.5), 
+                int(scale * 0.3),
                 0
             )
 
@@ -134,9 +158,12 @@ class Tester:
             person_text_color = (255, 70, 255)
 
             if int(person['id']) >= 0:
-                person_text = person.get("face", person['id'])
+                person_text = str(person.get("face", person['id']))
             else:
                 person_text = 'You'
+
+            if 'camera' in person:
+                person_text += f'[#{person["camera"]}]'
                 # person_text_color = (255, 70, 255)
             # if 'face' in person:
             #     img = self.font.render(f'{person["face"]}', True, (255, 70, 255))
@@ -144,11 +171,7 @@ class Tester:
             #     img = self.font.render(f'{person["id"]}', True, (255, 70, 255))
 
             if person_text:
-                img = self.font.render(f'{person_text}', True, person_text_color)
-                img = pygame.transform.flip(img, False, True)
-                iw, ih = img.get_size()
-                # ppos = ppos.add  (Vector3(0, -scale, 0))
-                ppos = ppos.add(Vector3(-iw / 2, -ih / 2, 0))
+                img, ppos = self.render_centered_text(ppos, person_text, person_text_color)
                 screen.blit(img, (int(ppos.x), int(ppos.y)))
                 # screen.blit(img, (50, 50))
             # else:
@@ -159,13 +182,13 @@ class Tester:
         scale  = self.scale
         l_pos  = self.local_position.copy()
         if self.cameras:
-            for camera in self.cameras:
+            for cidx, camera in enumerate(self.cameras):
                 cpos = Vector3.from_json(camera['position'])
                 cpos.z = 0
                 cpos = cpos.scale(scale)
                 cpos = cpos.add  (l_pos)
 
-                if cpos.x > -scale and cpos.y > -scale and cpos.x < w + scale and cpos.y < h + scale:
+                if -scale < cpos.x < w + scale and -scale < cpos.y < h + scale:
                     hangle = float(camera['h_rotation'])
                     dir_vector = Vector3(
                         scale * m.sin(hangle),
@@ -187,13 +210,21 @@ class Tester:
                         int(scale * 0.3), 
                         0
                     )
+
+                    camcol = (50, 127, 50)
+                    if self.selected_cam4e == cidx:
+                        camcol = (127, 50, 50)
+
                     pygame.draw.circle(
                         screen, 
-                        ((50, 127, 50)),
+                        camcol,
                         [int(cpos.x), int(cpos.y)], 
                         int(scale * 0.3), 
                         3
                     )
+
+                    img, ppos = self.render_centered_text(cpos, str(cidx), (100, 255, 0))
+                    screen.blit(img, (int(ppos.x), int(ppos.y)))
 
     def draw_mousepos(self, screen):
         sw, sh = screen.get_size()
@@ -266,6 +297,11 @@ class Tester:
                 if event.type == QUIT:
                     self.running = False
                 elif event.type == KEYDOWN:
+                    if K_0 <= event.key <= K_9:
+                        # 8 so "1" = camera #0
+                        self.selected_cam4e = 8 - (K_9 - event.key)
+                        print(f'Editing camera #{self.selected_cam4e}')
+
                     if   event.key == K_ESCAPE:
                         self.running = False
 
@@ -278,8 +314,8 @@ class Tester:
                     elif event.key == K_a:
                         self.change_observer_position(-1,  0)
 
-                    # if event.key == K_UP:
-                    #     self.local_position = self.local_position.add(Vector3(0, 3, 0))
+                    if event.key == K_UP:
+                        self.change_camera_position(0, 0.1)
                     # elif event.key == K_DOWN:
                     #     self.local_position = self.local_position.add(Vector3(0, -3, 0))
                     # elif event.key == K_LEFT:

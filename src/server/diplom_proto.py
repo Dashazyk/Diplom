@@ -147,13 +147,11 @@ yolo_objects = [
 serv = None #visualserver.Server([Camera(Vector3(8.0, 5.0, -3), 0.00, 0.00, 800, 600, 55)])
 face_db_dir = None
 
-def osd_sink_pad_buffer_probe(pad,info,u_data):
+def osd_sink_pad_buffer_probe(pad, info, u_data):
     # print('pad:', pad)
     # for k in pad.__dict__:
     #     print(k, pad.__dict__[k])
 
-    boxes = []
-    ids   = []
     frame_number=0
     num_rects=0
     yolo_objects_counts = [0] * len(yolo_objects)
@@ -170,6 +168,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
     l_frame = batch_meta.frame_meta_list
     while l_frame is not None:
+        boxes = []
+        ids = []
         try:
             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
             # The casting is done by pyds.glist_get_nvds_frame_meta()
@@ -183,6 +183,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
         src_id = frame_meta.source_id
         frame_number = frame_meta.frame_num
+        print(f'Working for camera #{src_id}')
+        print(f'Working for frame  #{frame_number}')
         # print(
         #     'fnum:', frame_number, 
         #     'pad_index:', frame_meta.pad_index, 
@@ -219,23 +221,30 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             #obj_counter[obj_meta.class_id] += 1
             yolo_objects_counts[obj_meta.class_id] += 1
 
+            box = {
+                'top':    obj_meta.rect_params.top,
+                'left':   obj_meta.rect_params.left,
+                'width':  obj_meta.rect_params.width,
+                'height': obj_meta.rect_params.height
+            }
+
+            color = (obj_meta.class_id * 2 + 50, 100, 0)
+            # cv2.rectangle(frame_copy, (X, Y), (X + W, Y + H), color, 5)
+
             # print(obj_meta.confidence)
             
             # if obj_meta.class_id == PGIE_CLASS_ID_PERSON and obj_meta.confidence > 0.3:
             if yolo_objects[obj_meta.class_id] == "person" and obj_meta.confidence > 0.3:
+                print(obj_meta.parent)
                 if True:
                     # transparent because
-                    obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.1)
-                    box = {
-                        'top'   : obj_meta.rect_params.top,
-                        'left'  : obj_meta.rect_params.left,
-                        'width' : obj_meta.rect_params.width,
-                        'height': obj_meta.rect_params.height
-                    }
+                    # obj_meta.rect_params.border_color.set(1.0, 0.0, 0.0, 0.5)
+                    obj_meta.rect_params.border_color.set(*color, 0.5)
+
                     id = obj_meta.object_id
                     #print('id = ', id, box)
                     #вычисление координат объекта на экране:
-                    b_y = box['top'] + box['height'] 
+                    b_y = box['top']  + box['height']
                     b_x = box['left'] + box['width'] / 2
                     boxes.append(visualserver.Vector3(b_x, b_y, 0))
                     ids.append(id)
@@ -247,22 +256,27 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                         if id not in serv.faced_ids[src_id] or not serv.faced_ids[src_id][id]:
                             n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
                             frame_copy = np.array(n_frame, copy=False, order='C')
+                            Y = int(box['top'])
+                            H = int(box['height'])
+                            X = int(box['left'])
+                            W = int(box['width'])
                             # frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
                                 # last_track_id = track_id
                                 # save_image = True
                             # print('Photo')
+
                             # img_path = "{}/frame_{}.{}.jpg".format(folder_name, frame_number, track_id)
-                            Y = int(box['top'   ])
-                            H = int(box['height'])
-                            X = int(box['left'  ])
-                            W = int(box['width' ])
-                            cv2.rectangle(frame_copy, (X, Y), (X + W, Y + H), (0, 100, 0), 5)
+                            # Y = int(box['top'   ])
+                            # H = int(box['height'])
+                            # X = int(box['left'  ])
+                            # W = int(box['width' ])
+                            # cv2.rectangle(frame_copy, (X, Y), (X + W, Y + H), (0, 100, 0), 5)
                             frame_copy = frame_copy[Y:Y+H, X:X+W]
                             # cv2.line(frame_copy, (0, 0), (100, 100), (255, 0, 0), 5)
-                            print(f'Copying frame from ({Y}, {X}) to ({Y+H}, {X+W})')
+                            # print(f'Copying frame from ({Y}, {X}) to ({Y+H}, {X+W})')
                             img_path = "{}/face_{}.jpg".format(folder_name, id)
                             cv2.imwrite(img_path, frame_copy)
-                            print(f'Saved an img #{frame_number} of id {id}')
+                            # print(f'Saved an img #{frame_number} of id {id}')
                             # serv.faced_ids[track_id] = None
             else:
                 obj_meta.rect_params.border_color.set(0.0, 0.0, 1.0, 0.1)
@@ -533,17 +547,21 @@ def build_pipeline(sources, cdir="configs/"):
         streammux.set_property("nvbuf-memory-type", mem_type)
         nvvidconv.set_property("nvbuf-memory-type", mem_type)
         tiler.set_property("nvbuf-memory-type", mem_type)
-    pipeline.add(tiler)
+
     # nvvidconv.link(tiler)
     # tiler.link(nvosd)
-    nvvidconv.link(nvosd)
+    pipeline.add(tiler)
 
-    if is_aarch64():
-        nvosd.link    (transform)
-        transform.link(tiler)
-    else:
-        nvosd.link(tiler)
-    tiler.link(sink)
+    nvvidconv.link(tiler)
+
+    # if is_aarch64():
+    #     nvosd.link    (transform)
+    #     transform.link(tiler)
+    # else:
+    #   nvosd.link(tiler)
+
+    tiler.link(nvosd)
+    nvosd.link(sink)
 
     # create an event loop and feed gstreamer bus mesages to it
     loop = GLib.MainLoop   ()
@@ -554,9 +572,11 @@ def build_pipeline(sources, cdir="configs/"):
     # Lets add probe to get informed of the meta data generated, we add probe to
     # the sink pad of the osd element, since by that time, the buffer would have
     # had got all the metadata.
-    osdsinkpad = checked_create(nvosd.get_static_pad("sink"), "sink pad of nvosd")
-
-    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
+    # osdsinkpad = checked_create(nvosd.get_static_pad("sink"), "sink pad of nvosd")
+    #
+    # osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
+    sinkpad = checked_create(nvvidconv.get_static_pad("sink"), "sink pad of nvosd")
+    sinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
 
     # start play back and listen to events
     print("Starting pipeline \n")
